@@ -12,6 +12,7 @@ import {
 import { AppHeader } from "@/components/app-header";
 import { ConfirmButton } from "@/components/confirm-button";
 import { requireUser } from "@/lib/auth";
+import { getAccountPlanState } from "@/lib/plans";
 import { canManage, listUserWorkspaces, listWorkspaceInvites, listWorkspaceMembers } from "@/lib/workspaces";
 
 export const dynamic = "force-dynamic";
@@ -29,22 +30,25 @@ function roleLabel(role: string) {
   return "Betrachter";
 }
 
-export default async function TeamPage({ searchParams }: { searchParams: Promise<{ workspace?: string; invite?: string; error?: string; joined?: string }> }) {
+export default async function TeamPage({ searchParams }: { searchParams: Promise<{ workspace?: string; invite?: string; error?: string; joined?: string; upgrade?: string }> }) {
   const user = await requireUser();
   const params = await searchParams;
-  const workspaces = await listUserWorkspaces(user.id);
+  const [workspaces, ownPlan] = await Promise.all([listUserWorkspaces(user.id), getAccountPlanState(user.id)]);
   const selected = workspaces.find((workspace) => workspace.id === params.workspace) ?? workspaces.find((workspace) => workspace.kind !== "PERSONAL") ?? workspaces[0];
   const members = selected ? await listWorkspaceMembers(selected.id) : [];
   const invites = selected && selected.kind !== "PERSONAL" && canManage(selected.role) ? await listWorkspaceInvites(selected.id) : [];
   const appUrl = (process.env.APP_URL || "https://navopass.de").replace(/\/$/, "");
   const inviteUrl = params.invite ? `${appUrl}/invite/${params.invite}` : null;
+  const sharedLimit = ownPlan.definition.maxSharedWorkspaces;
+  const canCreateOwnWorkspace = sharedLimit === null || ownPlan.usage.sharedWorkspaces < sharedLimit;
 
   return (
     <main className="app-page">
       <div className="container">
         <AppHeader name={user.name} />
-        <section className="team-head"><div><span className="eyebrow">Gemeinsam verwalten</span><h1>Haushalte & Teams</h1><p>Teile Objektpässe mit Familie, Kollegen oder Mitarbeitern – mit klaren Rollen und Rechten.</p></div><a className="button ghost small" href="#new-workspace">+ Bereich erstellen</a></section>
+        <section className="team-head"><div><span className="eyebrow">Gemeinsam verwalten</span><h1>Haushalte & Teams</h1><p>Teile Objektpässe mit Familie, Kollegen oder Mitarbeitern – mit klaren Rollen und Rechten.</p></div>{canCreateOwnWorkspace ? <a className="button ghost small" href="#new-workspace">+ Bereich erstellen</a> : <Link className="button ghost small" href="/preise">Tarif für Zusammenarbeit →</Link>}</section>
         {params.error && <p className="form-error team-message">{params.error}</p>}
+        {params.upgrade && <div className="upgrade-banner"><span><b>Tariflimit erreicht.</b> Deine bestehenden Bereiche und Daten bleiben erhalten. Für weiteres Wachstum brauchst du einen größeren Tarif.</span><Link href="/preise">Tarife ansehen →</Link></div>}
         {params.joined && <p className="form-success team-message">Einladung angenommen. Du hast jetzt Zugriff auf diesen Bereich.</p>}
         {inviteUrl && <section className="invite-result"><div><span className="eyebrow">Einladungslink erstellt</span><h2>Link jetzt weitergeben</h2><p>Der Link ist 7 Tage gültig und funktioniert nur mit der eingeladenen E-Mail-Adresse.</p></div><code>{inviteUrl}</code><p className="muted">Ein E-Mail-Versand ist bewusst noch nicht aktiv – solange kein Maildienst angebunden ist, gibst du diesen Link direkt an die Person weiter.</p></section>}
 
@@ -52,7 +56,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
           <aside className="workspace-sidebar">
             <div className="workspace-sidebar-title"><span>Deine Bereiche</span><b>{workspaces.length}</b></div>
             {workspaces.map((workspace) => <Link key={workspace.id} href={`/app/team?workspace=${workspace.id}`} className={`workspace-nav-card ${selected?.id === workspace.id ? "active" : ""}`}><span className="workspace-symbol">{workspace.kind === "PERSONAL" ? "P" : workspace.kind === "HOUSEHOLD" ? "H" : "T"}</span><div><b>{workspace.name}</b><small>{kindLabel(workspace.kind)} · {roleLabel(workspace.role)} · {workspace.member_count} Mitglied{workspace.member_count === 1 ? "" : "er"}</small></div></Link>)}
-            <form action={createWorkspaceAction} id="new-workspace" className="workspace-create"><span className="eyebrow">Neuer Bereich</span><label>Name<input name="name" maxLength={120} placeholder="z. B. Familie Kaminski" required /></label><label>Typ<select name="kind" defaultValue="HOUSEHOLD"><option value="HOUSEHOLD">Haushalt / Familie</option><option value="TEAM">Team / Firma</option></select></label><button className="button small" type="submit">Bereich erstellen</button></form>
+            {canCreateOwnWorkspace ? <form action={createWorkspaceAction} id="new-workspace" className="workspace-create"><span className="eyebrow">Neuer Bereich</span><label>Name<input name="name" maxLength={120} placeholder="z. B. Familie Kaminski" required /></label><label>Typ<select name="kind" defaultValue="HOUSEHOLD"><option value="HOUSEHOLD">Haushalt / Familie</option><option value="TEAM">Team / Firma</option></select></label><button className="button small" type="submit">Bereich erstellen</button></form> : <div className="workspace-create"><span className="eyebrow">{ownPlan.definition.name}</span><b>Gemeinsame Bereiche nicht verfügbar</b><span className="muted">{sharedLimit === 0 ? "Dieser Tarif ist für persönliche Nutzung ausgelegt." : `Du nutzt bereits ${ownPlan.usage.sharedWorkspaces} von ${sharedLimit} gemeinsamen Bereichen.`}</span><Link className="button small" href="/preise">Tarife vergleichen</Link></div>}
           </aside>
 
           {selected && <div className="workspace-main">
