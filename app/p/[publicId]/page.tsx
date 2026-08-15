@@ -2,8 +2,21 @@ import { notFound } from "next/navigation";
 import { getDocuments, getEvents, getShareableAsset } from "@/lib/assets";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Logo } from "@/components/logo";
+import fileStyles from "@/app/file-cards.module.css";
 
 export const dynamic = "force-dynamic";
+
+function decodedUrl(url: string) {
+  try { return decodeURIComponent(url); } catch { return url; }
+}
+
+function isImageUrl(url: string) {
+  return /\.(jpe?g|png|webp|heic|heif)(?:$|[?#])/i.test(decodedUrl(url));
+}
+
+function isPdfUrl(url: string) {
+  return /\.pdf(?:$|[?#])/i.test(decodedUrl(url));
+}
 
 export default async function PublicPassPage({ params }: { params: Promise<{ publicId: string }> }) {
   const { publicId } = await params;
@@ -24,8 +37,31 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
         <div className="public-stats"><div><small>Seriennummer</small><b>{asset.serial_number || "Nicht angegeben"}</b></div><div><small>Kauf / Installation</small><b>{formatDate(asset.purchase_date)}</b></div><div><small>Garantie</small><b>{formatDate(asset.warranty_until)}</b></div></div>
 
         <div className="public-grid">
-          <article className="panel"><div className="panel-head"><h2>Historie</h2><span className="count-pill">{events.length}</span></div><div className="timeline">{events.length === 0 ? <p className="muted">Noch keine öffentlichen Serviceeinträge.</p> : events.map((event) => <div className="timeline-item" key={event.id}><span className="timeline-dot"></span><div><div className="timeline-line"><b>{event.title}</b><time>{formatDate(event.event_date)}</time></div>{event.description && <p>{event.description}</p>}<small>{[event.provider, formatMoney(event.cost_cents)].filter(Boolean).join(" · ")}</small></div></div>)}</div></article>
-          <article className="panel"><div className="panel-head"><h2>Dokumente</h2><span className="count-pill">{documents.length}</span></div><div className="document-list">{documents.length === 0 ? <p className="muted">Keine öffentlichen Dokumente.</p> : documents.map((doc) => <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer"><span>↗</span><div><b>{doc.title}</b><small>{doc.kind}</small></div></a>)}</div></article>
+          <article className="panel">
+            <div className="panel-head"><h2>Historie</h2><span className="count-pill">{events.length}</span></div>
+            <div className="timeline">{events.length === 0 ? <p className="muted">Noch keine öffentlichen Serviceeinträge.</p> : events.map((event) => <div className="timeline-item" key={event.id}><span className="timeline-dot"></span><div><div className="timeline-line"><b>{event.title}</b><time>{formatDate(event.event_date)}</time></div>{event.description && <p>{event.description}</p>}<small>{[event.provider, formatMoney(event.cost_cents)].filter(Boolean).join(" · ")}</small></div></div>)}</div>
+          </article>
+
+          <article className="panel">
+            <div className="panel-head"><h2>Fotos & Dokumente</h2><span className="count-pill">{documents.length}</span></div>
+            {documents.length === 0 ? <p className="muted">Keine freigegebenen Fotos oder Dokumente.</p> : (
+              <div className={fileStyles.publicGrid}>
+                {documents.map((doc) => {
+                  const image = isImageUrl(doc.url);
+                  return (
+                    <article className={fileStyles.fileCard} key={doc.id}>
+                      <a href={doc.url} target="_blank" rel="noreferrer">
+                        <div className={fileStyles.preview}>
+                          {image ? <img src={doc.url} alt={doc.title} loading="lazy" /> : <div className={fileStyles.fileIcon}>{isPdfUrl(doc.url) ? "PDF" : "LINK"}</div>}
+                        </div>
+                        <div className={fileStyles.fileMeta}><b>{doc.title}</b><small>{doc.kind}</small></div>
+                      </a>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </article>
         </div>
         <footer className="public-foot"><p>Dieser Pass wird mit NavoPass bereitgestellt. Der Eigentümer bestimmt die sichtbaren Informationen.</p></footer>
       </section>
