@@ -83,12 +83,12 @@ export default function HomePage() {
             <a href="#produkt">Produkt</a>
             <a href="#zielgruppen">Für wen?</a>
             <a href="#so-gehts">So funktioniert&apos;s</a>
+            <Link href="/preise">Preise</Link>
             <a href="#start">Loslegen</a>
-            <a href="#footer">Ressourcen</a>
           </nav>
           <div className={styles.headerActions}>
             <Link href="/login" className={styles.login}>Anmelden</Link>
-            <Link href="/register" className={styles.topCta}>Jetzt starten <span>→</span></Link>
+            <Link href="/register" className={styles.topCta}>Kostenlos starten <span>→</span></Link>
           </div>
         </div>
       </header>
@@ -107,13 +107,13 @@ export default function HomePage() {
             <h1>Alles, was dir gehört,<br/>bekommt seinen eigenen<br/><em>digitalen Pass.</em></h1>
             <p>Dokumente, Garantien, Reparaturen, Wartungen und Erinnerungen – sicher an einem Ort, per QR-Code verfügbar und auf Wunsch gemeinsam mit Familie oder Team verwaltet.</p>
             <div className={styles.heroActions}>
-              <Link href="/register" className={styles.primaryCta}>Jetzt starten <span>→</span></Link>
+              <Link href="/register" className={styles.primaryCta}>Kostenlos starten <span>→</span></Link>
               <a href="#demo" className={styles.secondaryCta}>Beispiel ansehen <span className={styles.play}>▷</span></a>
             </div>
             <div className={styles.trustBar}>
               <span><Icon size={17}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon> Datenschutz im Fokus</span>
               <span><Icon size={17}><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></Icon> In Sekunden eingerichtet</span>
-              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Persönlich, Haushalt & Team</span>
+              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Startphase aktuell 0 €</span>
             </div>
           </div>
 
@@ -221,21 +221,21 @@ export default function HomePage() {
         <div className={styles.ctaShield}><Icon size={28}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon></div>
         <div>
           <h2>Bereit für deinen ersten digitalen Pass?</h2>
-          <p>Starte persönlich und erweitere NavoPass bei Bedarf um Haushalt oder Team.</p>
+          <p>Starte aktuell kostenlos und erweitere NavoPass bei Bedarf um Haushalt oder Team.</p>
         </div>
         <div className={styles.ctaButtons}>
-          <Link href="/register" className={styles.primaryCta}>Jetzt starten <span>→</span></Link>
-          <a href="#produkt" className={styles.moreCta}>Mehr erfahren <span>→</span></a>
+          <Link href="/register" className={styles.primaryCta}>Kostenlos starten <span>→</span></Link>
+          <Link href="/preise" className={styles.moreCta}>Preise ansehen <span>→</span></Link>
         </div>
       </section>
 
       <footer className={styles.footer} id="footer">
         <div className={styles.footerInner}>
           <div className={styles.footerBrand}><Brand /><p>Der digitale Pass für deine Dinge.</p></div>
-          <div><b>Produkt</b><a href="#so-gehts">Funktionen</a><a href="#zielgruppen">Für wen?</a><a href="#produkt">Sicherheit</a><a href="#start">Zusammenarbeit</a></div>
-          <div><b>Ressourcen</b><a href="#so-gehts">Hilfe-Center</a><a href="#produkt">Service & Fristen</a><a href="#produkt">QR-Pässe</a></div>
-          <div><b>Unternehmen</b><a href="https://kamilunavo.com">Über uns</a><a href="https://kamilunavo.com/support">Support</a></div>
-          <div><b>Rechtliches</b><a href="https://kamilunavo.com/datenschutz">Datenschutz</a><a href="https://kamilunavo.com/impressum">Impressum</a><span>© 2026 Kamilunavo</span></div>
+          <div><b>Produkt</b><a href="#so-gehts">Funktionen</a><a href="#zielgruppen">Für wen?</a><Link href="/preise">Preise</Link><Link href="/register">Kostenlos starten</Link></div>
+          <div><b>Ressourcen</b><Link href="/kontakt">Kontakt & Support</Link><a href="#produkt">Service & Fristen</a><a href="#produkt">QR-Pässe</a></div>
+          <div><b>Unternehmen</b><a href="https://kamilunavo.com">Kamilunavo</a><a href="https://kamilunavo.com/support">Kamilunavo Support</a></div>
+          <div><b>Rechtliches</b><Link href="/datenschutz">Datenschutz</Link><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link><span>© 2026 Kamilunavo</span></div>
         </div>
       </footer>
     </main>
