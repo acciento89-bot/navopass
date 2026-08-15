@@ -15,7 +15,7 @@ export default async function NewAssetPage({ searchParams }: { searchParams: Pro
         <AppHeader name={user.name} />
         <div className="page-back"><Link href="/app">← Meine Pässe</Link></div>
         <section className="editor-card">
-          <div className="section-heading left"><span className="eyebrow">Neuer Objektpass</span><h1>Was möchtest du dokumentieren?</h1><p>Starte mit den wichtigsten Daten. Fotos, Dokumente und Historieneinträge kannst du direkt danach ergänzen.</p></div>
+          <div className="section-heading left"><span className="eyebrow">Neuer Objektpass</span><h1>Was möchtest du dokumentieren?</h1><p>Starte mit den wichtigsten Daten. Fotos, Dokumente, Historie und Wartungsplanung kannst du direkt danach ergänzen.</p></div>
           {error && <p className="form-error">{error}</p>}
           <form action={createAssetAction} className="form-grid">
             <label className="span-2">Name des Objekts<input name="name" placeholder="z. B. Wärmepumpe Keller" maxLength={160} required /></label>
@@ -27,9 +27,10 @@ export default async function NewAssetPage({ searchParams }: { searchParams: Pro
             <label>Kauf-/Installationsdatum<input name="purchaseDate" type="date" /></label>
             <label>Garantie bis<input name="warrantyUntil" type="date" /></label>
             <label>Nächste Wartung<input name="nextServiceDate" type="date" /></label>
-            <label>Sichtbarkeit<select name="visibility" defaultValue="LINK"><option value="PRIVATE">Privat – nur ich</option><option value="LINK">Per Link/QR – wer den Link hat</option><option value="PUBLIC">Öffentlich</option></select></label>
+            <label>Wartungsintervall<select name="serviceIntervalMonths" defaultValue="12"><option value="3">Alle 3 Monate</option><option value="6">Alle 6 Monate</option><option value="12">Jährlich</option><option value="18">Alle 18 Monate</option><option value="24">Alle 2 Jahre</option><option value="36">Alle 3 Jahre</option></select></label>
+            <label className="span-2">Sichtbarkeit<select name="visibility" defaultValue="LINK"><option value="PRIVATE">Privat – nur ich</option><option value="LINK">Per Link/QR – wer den Link hat</option><option value="PUBLIC">Öffentlich</option></select></label>
             <label className="span-2">Notizen<textarea name="notes" rows={5} maxLength={5000} placeholder="Wichtige Hinweise, Besonderheiten, Zubehör oder andere Informationen" /></label>
-            <div className="form-tip span-2"><b>Tipp</b><span>Nach dem Anlegen bekommst du sofort deinen QR-Code und kannst Rechnungen, Fotos, Wartungen und Reparaturen ergänzen.</span></div>
+            <div className="form-tip span-2"><b>Service-Automatik</b><span>Wenn du später eine Wartung als erledigt markierst, berechnet NavoPass den nächsten Termin automatisch aus dem gewählten Intervall.</span></div>
             <div className="form-actions span-2"><Link className="button ghost" href="/app">Abbrechen</Link><button className="button" type="submit">Pass erstellen →</button></div>
           </form>
         </section>
