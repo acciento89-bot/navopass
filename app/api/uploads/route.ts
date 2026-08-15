@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       "INSERT INTO asset_documents (id,asset_id,title,url,kind,is_public) VALUES ($1,$2,$3,$4,$5,$6)",
       [id, asset.id, title, documentUrl, kind, isPublic]
     );
+    await query("UPDATE assets SET updated_at=now() WHERE id=$1", [asset.id]);
 
     return redirectToAsset(request, assetId);
   } catch (error) {
