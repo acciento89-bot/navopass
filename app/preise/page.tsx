@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
-import { PLAN_CONFIG, formatEuro, formatStorage, type Plan } from "@/lib/plans";
+import { PLAN_CONFIG, formatEuro, formatStorage, type Plan } from "@/lib/plan-config";
 import styles from "@/app/public-pages.module.css";
 
 export const metadata: Metadata = {
