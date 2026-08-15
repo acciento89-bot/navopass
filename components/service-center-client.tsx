@@ -5,117 +5,20 @@ import { useMemo, useState } from "react";
 import { completeServiceAction, rescheduleServiceAction } from "@/app/actions/assets";
 import type { Asset } from "@/lib/assets";
 
-type DeadlineKind = "SERVICE" | "WARRANTY";
-type Deadline = {
-  id: string;
-  kind: DeadlineKind;
-  date: string;
-  days: number;
-  asset: Asset;
-};
+type DeadlineKind="SERVICE"|"WARRANTY"; type Deadline={id:string;kind:DeadlineKind;date:string;days:number;asset:Asset};
+function dayDiff(value:string){const target=new Date(`${value}T12:00:00`).getTime();const today=new Date();today.setHours(12,0,0,0);return Math.ceil((target-today.getTime())/86400000);}
+function formatDate(value:string){return new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).format(new Date(`${value}T12:00:00`));}
+function relativeLabel(days:number){if(days<0)return `${Math.abs(days)} ${Math.abs(days)===1?"Tag":"Tage"} überfällig`;if(days===0)return"Heute fällig";if(days===1)return"Morgen fällig";return`in ${days} Tagen`;}
+function tone(days:number){if(days<0)return"danger";if(days<=30)return"warning";return"ok";}
+function editable(asset:Asset){return asset.access_role!=="VIEWER";}
 
-function dayDiff(value: string) {
-  const target = new Date(`${value}T12:00:00`).getTime();
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  return Math.ceil((target - today.getTime()) / 86400000);
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`));
-}
-
-function relativeLabel(days: number) {
-  if (days < 0) return `${Math.abs(days)} ${Math.abs(days) === 1 ? "Tag" : "Tage"} überfällig`;
-  if (days === 0) return "Heute fällig";
-  if (days === 1) return "Morgen fällig";
-  return `in ${days} Tagen`;
-}
-
-function tone(days: number) {
-  if (days < 0) return "danger";
-  if (days <= 30) return "warning";
-  return "ok";
-}
-
-export function ServiceCenterClient({ assets }: { assets: Asset[] }) {
-  const [scope, setScope] = useState("ALL");
-  const [kind, setKind] = useState("ALL");
-  const [query, setQuery] = useState("");
-
-  const active = useMemo(() => assets.filter((asset) => !asset.archived_at), [assets]);
-  const deadlines = useMemo<Deadline[]>(() => {
-    const result: Deadline[] = [];
-    for (const asset of active) {
-      if (asset.next_service_date) result.push({ id: `${asset.id}-service`, kind: "SERVICE", date: asset.next_service_date, days: dayDiff(asset.next_service_date), asset });
-      if (asset.warranty_until) result.push({ id: `${asset.id}-warranty`, kind: "WARRANTY", date: asset.warranty_until, days: dayDiff(asset.warranty_until), asset });
-    }
-    return result.sort((a, b) => a.days - b.days);
-  }, [active]);
-
-  const unplanned = active.filter((asset) => !asset.next_service_date);
-  const overdue = deadlines.filter((item) => item.days < 0).length;
-  const next30 = deadlines.filter((item) => item.days >= 0 && item.days <= 30).length;
-  const next90 = deadlines.filter((item) => item.days > 30 && item.days <= 90).length;
-
-  const filtered = deadlines.filter((item) => {
-    if (kind !== "ALL" && item.kind !== kind) return false;
-    if (scope === "OVERDUE" && item.days >= 0) return false;
-    if (scope === "30" && (item.days < 0 || item.days > 30)) return false;
-    if (scope === "90" && (item.days < 0 || item.days > 90)) return false;
-    const needle = query.trim().toLowerCase();
-    if (!needle) return true;
-    return [item.asset.name, item.asset.category, item.asset.manufacturer, item.asset.model, item.asset.location]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(needle));
-  });
-
-  return (
-    <>
-      <section className="service-stats">
-        <button className={scope === "OVERDUE" ? "active danger" : "danger"} type="button" onClick={() => setScope("OVERDUE")}><span>Überfällig</span><b>{overdue}</b><small>Sofort prüfen</small></button>
-        <button className={scope === "30" ? "active warning" : "warning"} type="button" onClick={() => setScope("30")}><span>Nächste 30 Tage</span><b>{next30}</b><small>Wartung & Garantie</small></button>
-        <button className={scope === "90" ? "active" : ""} type="button" onClick={() => setScope("90")}><span>Nächste 90 Tage</span><b>{next90}</b><small>Vorausschau</small></button>
-        <button className={scope === "UNPLANNED" ? "active" : ""} type="button" onClick={() => setScope("UNPLANNED")}><span>Ohne Wartung</span><b>{unplanned.length}</b><small>Noch kein Termin</small></button>
-      </section>
-
-      <section className="service-toolbar">
-        <div className="search-field"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Objekte und Fristen suchen…" /></div>
-        <div className="segmented">
-          <button className={kind === "ALL" ? "active" : ""} type="button" onClick={() => setKind("ALL")}>Alle</button>
-          <button className={kind === "SERVICE" ? "active" : ""} type="button" onClick={() => setKind("SERVICE")}>Wartungen</button>
-          <button className={kind === "WARRANTY" ? "active" : ""} type="button" onClick={() => setKind("WARRANTY")}>Garantien</button>
-        </div>
-        <button className="button ghost small" type="button" onClick={() => setScope("ALL")}>Alle Fristen</button>
-        <a className="button small" href="/api/calendar">Kalender exportieren</a>
-      </section>
-
-      {scope === "UNPLANNED" ? (
-        <section className="service-list">
-          {unplanned.length === 0 ? <div className="empty-state compact"><div className="empty-icon">✓</div><h2>Alles geplant.</h2><p>Alle aktiven Pässe haben einen nächsten Wartungstermin.</p></div> : unplanned.map((asset) => (
-            <article className="service-card neutral" key={asset.id}>
-              <div className="service-date"><span>—</span><b>Kein Termin</b><small>{asset.service_interval_months || 12} Monate Intervall</small></div>
-              <div className="service-main"><span className="asset-category">{asset.category}</span><h2><Link href={`/app/assets/${asset.id}`}>{asset.name}</Link></h2><p>{[asset.manufacturer, asset.model, asset.location].filter(Boolean).join(" · ") || "Noch keine weiteren Angaben"}</p></div>
-              <form action={rescheduleServiceAction} className="service-quick-form"><input type="hidden" name="assetId" value={asset.id} /><label>Erste Wartung<input name="nextServiceDate" type="date" required /></label><button className="button small" type="submit">Termin setzen</button></form>
-            </article>
-          ))}
-        </section>
-      ) : (
-        <section className="service-list">
-          {filtered.length === 0 ? <div className="empty-state compact"><div className="empty-icon">✓</div><h2>Keine passenden Fristen.</h2><p>Für diesen Zeitraum und Filter ist aktuell nichts fällig.</p></div> : filtered.map((item) => (
-            <article className={`service-card ${tone(item.days)}`} key={item.id}>
-              <div className="service-date"><span>{item.kind === "SERVICE" ? "Wartung" : "Garantie"}</span><b>{formatDate(item.date)}</b><small>{relativeLabel(item.days)}</small></div>
-              <div className="service-main"><span className="asset-category">{item.asset.category}</span><h2><Link href={`/app/assets/${item.asset.id}`}>{item.asset.name}</Link></h2><p>{[item.asset.manufacturer, item.asset.model, item.asset.location].filter(Boolean).join(" · ") || "Noch keine weiteren Angaben"}</p>{item.kind === "SERVICE" && <span className="interval-chip">Intervall: {item.asset.service_interval_months || 12} Monate</span>}</div>
-              <div className="service-actions">
-                {item.kind === "SERVICE" ? <>
-                  <form action={completeServiceAction}><input type="hidden" name="assetId" value={item.asset.id} /><button className="button small" type="submit">✓ Wartung erledigt</button></form>
-                  <form action={rescheduleServiceAction} className="reschedule-form"><input type="hidden" name="assetId" value={item.asset.id} /><input name="nextServiceDate" type="date" defaultValue={item.date} required /><button className="button ghost small" type="submit">Verschieben</button></form>
-                </> : <Link className="button ghost small" href={`/app/assets/${item.asset.id}`}>Pass öffnen</Link>}
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
-    </>
-  );
+export function ServiceCenterClient({assets}:{assets:Asset[]}){
+ const[scope,setScope]=useState("ALL"),[kind,setKind]=useState("ALL"),[query,setQuery]=useState("");
+ const active=useMemo(()=>assets.filter(a=>!a.archived_at),[assets]);
+ const deadlines=useMemo<Deadline[]>(()=>{const r:Deadline[]=[];for(const asset of active){if(asset.next_service_date)r.push({id:`${asset.id}-service`,kind:"SERVICE",date:asset.next_service_date,days:dayDiff(asset.next_service_date),asset});if(asset.warranty_until)r.push({id:`${asset.id}-warranty`,kind:"WARRANTY",date:asset.warranty_until,days:dayDiff(asset.warranty_until),asset});}return r.sort((a,b)=>a.days-b.days);},[active]);
+ const unplanned=active.filter(a=>!a.next_service_date),overdue=deadlines.filter(i=>i.days<0).length,next30=deadlines.filter(i=>i.days>=0&&i.days<=30).length,next90=deadlines.filter(i=>i.days>30&&i.days<=90).length;
+ const filtered=deadlines.filter(item=>{if(kind!=="ALL"&&item.kind!==kind)return false;if(scope==="OVERDUE"&&item.days>=0)return false;if(scope==="30"&&(item.days<0||item.days>30))return false;if(scope==="90"&&(item.days<0||item.days>90))return false;const needle=query.trim().toLowerCase();return !needle||[item.asset.name,item.asset.category,item.asset.manufacturer,item.asset.model,item.asset.location,item.asset.workspace_name].filter(Boolean).some(v=>String(v).toLowerCase().includes(needle));});
+ return <><section className="service-stats"><button className={scope==="OVERDUE"?"active danger":"danger"} type="button" onClick={()=>setScope("OVERDUE")}><span>Überfällig</span><b>{overdue}</b><small>Sofort prüfen</small></button><button className={scope==="30"?"active warning":"warning"} type="button" onClick={()=>setScope("30")}><span>Nächste 30 Tage</span><b>{next30}</b><small>Wartung & Garantie</small></button><button className={scope==="90"?"active":""} type="button" onClick={()=>setScope("90")}><span>Nächste 90 Tage</span><b>{next90}</b><small>Vorausschau</small></button><button className={scope==="UNPLANNED"?"active":""} type="button" onClick={()=>setScope("UNPLANNED")}><span>Ohne Wartung</span><b>{unplanned.length}</b><small>Noch kein Termin</small></button></section>
+ <section className="service-toolbar"><div className="search-field"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Objekte und Fristen suchen…" /></div><div className="segmented"><button className={kind==="ALL"?"active":""} type="button" onClick={()=>setKind("ALL")}>Alle</button><button className={kind==="SERVICE"?"active":""} type="button" onClick={()=>setKind("SERVICE")}>Wartungen</button><button className={kind==="WARRANTY"?"active":""} type="button" onClick={()=>setKind("WARRANTY")}>Garantien</button></div><button className="button ghost small" type="button" onClick={()=>setScope("ALL")}>Alle Fristen</button><a className="button small" href="/api/calendar">Kalender exportieren</a></section>
+ {scope==="UNPLANNED"?<section className="service-list">{unplanned.length===0?<div className="empty-state compact"><div className="empty-icon">✓</div><h2>Alles geplant.</h2><p>Alle aktiven Pässe haben einen nächsten Wartungstermin.</p></div>:unplanned.map(asset=><article className="service-card neutral" key={asset.id}><div className="service-date"><span>—</span><b>Kein Termin</b><small>{asset.service_interval_months||12} Monate Intervall</small></div><div className="service-main"><span className="asset-category">{asset.category}</span><h2><Link href={`/app/assets/${asset.id}`}>{asset.name}</Link></h2><p>{[asset.manufacturer,asset.model,asset.location,asset.workspace_name].filter(Boolean).join(" · ")||"Noch keine weiteren Angaben"}</p></div>{editable(asset)?<form action={rescheduleServiceAction} className="service-quick-form"><input type="hidden" name="assetId" value={asset.id}/><label>Erste Wartung<input name="nextServiceDate" type="date" required/></label><button className="button small" type="submit">Termin setzen</button></form>:<span className="access-chip">Nur ansehen</span>}</article>)}</section>:<section className="service-list">{filtered.length===0?<div className="empty-state compact"><div className="empty-icon">✓</div><h2>Keine passenden Fristen.</h2><p>Für diesen Zeitraum und Filter ist aktuell nichts fällig.</p></div>:filtered.map(item=><article className={`service-card ${tone(item.days)}`} key={item.id}><div className="service-date"><span>{item.kind==="SERVICE"?"Wartung":"Garantie"}</span><b>{formatDate(item.date)}</b><small>{relativeLabel(item.days)}</small></div><div className="service-main"><span className="asset-category">{item.asset.category}</span><h2><Link href={`/app/assets/${item.asset.id}`}>{item.asset.name}</Link></h2><p>{[item.asset.manufacturer,item.asset.model,item.asset.location,item.asset.workspace_name].filter(Boolean).join(" · ")||"Noch keine weiteren Angaben"}</p>{item.kind==="SERVICE"&&<span className="interval-chip">Intervall: {item.asset.service_interval_months||12} Monate</span>}</div><div className="service-actions">{item.kind==="SERVICE"&&editable(item.asset)?<><form action={completeServiceAction}><input type="hidden" name="assetId" value={item.asset.id}/><button className="button small" type="submit">✓ Wartung erledigt</button></form><form action={rescheduleServiceAction} className="reschedule-form"><input type="hidden" name="assetId" value={item.asset.id}/><input name="nextServiceDate" type="date" defaultValue={item.date} required/><button className="button ghost small" type="submit">Verschieben</button></form></>:<Link className="button ghost small" href={`/app/assets/${item.asset.id}`}>Pass öffnen</Link>}</div></article>)}</section>}</>;
 }
