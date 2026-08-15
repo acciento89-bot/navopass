@@ -5,12 +5,32 @@ import { AppHeader } from "@/components/app-header";
 import { requireUser } from "@/lib/auth";
 import { getDocuments, getEvents, getOwnedAsset } from "@/lib/assets";
 import { formatDate, formatMoney } from "@/lib/format";
+import fileStyles from "@/app/file-cards.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+function decodedUrl(url: string) {
+  try { return decodeURIComponent(url); } catch { return url; }
+}
+
+function isImageUrl(url: string) {
+  return /\.(jpe?g|png|webp|heic|heif)(?:$|[?#])/i.test(decodedUrl(url));
+}
+
+function isPdfUrl(url: string) {
+  return /\.pdf(?:$|[?#])/i.test(decodedUrl(url));
+}
+
+export default async function AssetDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ uploadError?: string }>;
+}) {
   const user = await requireUser();
   const { id } = await params;
+  const { uploadError } = await searchParams;
   const asset = await getOwnedAsset(user.id, id);
   if (!asset) notFound();
   const [events, documents] = await Promise.all([getEvents(asset.id), getDocuments(asset.id)]);
@@ -80,16 +100,56 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         </article>
 
         <article className="panel">
-          <div className="panel-head"><div><span className="eyebrow">Unterlagen</span><h2>Dokumente</h2></div><span className="count-pill">{documents.length}</span></div>
-          <p className="muted">Im ersten MVP werden Dokumente als sichere Links hinterlegt. Datei-Uploads folgen als nächster Schritt.</p>
-          <form action={addDocumentAction} className="compact-form">
+          <div className="panel-head"><div><span className="eyebrow">Unterlagen</span><h2>Fotos & Dokumente</h2></div><span className="count-pill">{documents.length}</span></div>
+          <p className="muted">Fotos, Rechnungen, Anleitungen und Prüfberichte bleiben direkt am Objektpass gespeichert.</p>
+
+          {uploadError && <p className={fileStyles.error}>{uploadError}</p>}
+
+          <div className={fileStyles.uploadBox}>
+            <div className={fileStyles.uploadIntro}>
+              <div><h3>Datei hochladen</h3><p>PDF oder Foto bis 15 MB. Auch HEIC/HEIF vom iPhone wird akzeptiert.</p></div>
+              <span className={fileStyles.uploadBadge}>Lokal gespeichert</span>
+            </div>
+            <form action="/api/uploads" method="post" encType="multipart/form-data" className={fileStyles.uploadForm}>
+              <input type="hidden" name="assetId" value={asset.id} />
+              <label>Datei<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" required /></label>
+              <div className={fileStyles.uploadRow}>
+                <label>Titel (optional)<input name="title" placeholder="z. B. Rechnung Wärmepumpe" /></label>
+                <label>Art<select name="kind" defaultValue=""><option value="">Automatisch erkennen</option><option value="Foto">Foto</option><option value="Dokument">Dokument</option><option value="Rechnung">Rechnung</option><option value="Anleitung">Anleitung</option><option value="Garantie">Garantie</option><option value="Prüfbericht">Prüfbericht</option></select></label>
+              </div>
+              <div className={fileStyles.uploadActions}>
+                <label className={fileStyles.publicCheck}><input name="isPublic" type="checkbox" defaultChecked /> Im geteilten Pass sichtbar</label>
+                <button className={fileStyles.uploadButton} type="submit">Datei hochladen</button>
+              </div>
+            </form>
+          </div>
+
+          {documents.length === 0 ? <p className={fileStyles.empty}>Noch keine Fotos oder Dokumente gespeichert.</p> : (
+            <div className={fileStyles.fileGrid}>
+              {documents.map((doc) => {
+                const image = isImageUrl(doc.url);
+                return (
+                  <article className={fileStyles.fileCard} key={doc.id}>
+                    <a href={doc.url} target="_blank" rel="noreferrer">
+                      <div className={fileStyles.preview}>
+                        {image ? <img src={doc.url} alt={doc.title} loading="lazy" /> : <div className={fileStyles.fileIcon}>{isPdfUrl(doc.url) ? "PDF" : "LINK"}</div>}
+                      </div>
+                      <div className={fileStyles.fileMeta}><b>{doc.title}</b><small>{doc.kind}{doc.is_public ? " · geteilt" : " · privat"}</small></div>
+                    </a>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          <div className={fileStyles.divider}>oder externer Link</div>
+          <form action={addDocumentAction} className={fileStyles.linkForm}>
             <input type="hidden" name="assetId" value={asset.id} />
-            <label>Titel<input name="title" placeholder="z. B. Bedienungsanleitung" required /></label>
+            <label>Titel<input name="title" placeholder="z. B. Hersteller-Anleitung" required /></label>
             <label>Link<input name="url" type="url" placeholder="https://…" required /></label>
-            <div className="two-cols"><label>Art<select name="kind"><option>Dokument</option><option>Rechnung</option><option>Anleitung</option><option>Garantie</option><option>Prüfbericht</option></select></label><label className="check-label"><input name="isPublic" type="checkbox" defaultChecked /> Im geteilten Pass sichtbar</label></div>
-            <button className="button small" type="submit">Dokument hinzufügen</button>
+            <div className={fileStyles.uploadRow}><label>Art<select name="kind"><option>Dokument</option><option>Rechnung</option><option>Anleitung</option><option>Garantie</option><option>Prüfbericht</option></select></label><label className={fileStyles.publicCheck}><input name="isPublic" type="checkbox" defaultChecked /> Im geteilten Pass sichtbar</label></div>
+            <button className="button small" type="submit">Link hinzufügen</button>
           </form>
-          <div className="document-list">{documents.length === 0 ? <p className="muted">Noch keine Dokumente.</p> : documents.map((doc) => <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer"><span>↗</span><div><b>{doc.title}</b><small>{doc.kind}</small></div></a>)}</div>
         </article>
       </section>
     </main>
