@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Digitale Objekt- und Servicepässe",
     start_url: "/app",
     display: "standalone",
-    background_color: "#f5f7fb",
-    theme_color: "#0b1324",
+    background_color: "#f7fbfd",
+    theme_color: "#0b6e9d",
     icons: [{ src: "/navopass.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
   };
 }
