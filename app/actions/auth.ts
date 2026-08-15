@@ -5,6 +5,8 @@ import { createSession, destroySession, findUserByEmail, hashPassword, normalize
 import { query } from "@/lib/db";
 import { ensurePersonalWorkspace } from "@/lib/workspaces";
 
+const TERMS_VERSION = "2026-08-15";
+
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
@@ -20,16 +22,22 @@ export async function registerAction(formData: FormData) {
   const email = normalizeEmail(text(formData, "email"));
   const password = text(formData, "password");
   const next = safeNext(text(formData, "next"));
+  const legalAccepted = formData.get("legalAccepted") === "on";
 
   if (name.length < 2) redirect(errorTarget("register", "Bitte Namen angeben", next));
   if (!email.includes("@")) redirect(errorTarget("register", "Bitte gültige E-Mail angeben", next));
   if (password.length < 8) redirect(errorTarget("register", "Passwort muss mindestens 8 Zeichen haben", next));
+  if (!legalAccepted) redirect(errorTarget("register", "Bitte Nutzungsbedingungen akzeptieren und Datenschutz zur Kenntnis nehmen", next));
 
   const existing = await findUserByEmail(email);
   if (existing) redirect(errorTarget("login", "Konto existiert bereits", next));
 
   const passwordHash = await hashPassword(password);
-  const result = await query<{ id: string }>("INSERT INTO users (email,name,password_hash) VALUES ($1,$2,$3) RETURNING id", [email, name, passwordHash]);
+  const result = await query<{ id: string }>(
+    `INSERT INTO users (email,name,password_hash,terms_accepted_at,terms_version,privacy_acknowledged_at)
+     VALUES ($1,$2,$3,now(),$4,now()) RETURNING id`,
+    [email, name, passwordHash, TERMS_VERSION]
+  );
   await ensurePersonalWorkspace({ id: result.rows[0].id, name });
   await createSession(result.rows[0].id);
   redirect(next);
