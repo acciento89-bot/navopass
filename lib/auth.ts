@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { query } from "@/lib/db";
-import { ensurePersonalWorkspace } from "@/lib/workspaces";
 
 const scrypt = promisify(scryptCallback);
 const COOKIE_NAME = "navopass_session";
@@ -91,9 +90,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
      WHERE s.token_hash=$1 AND s.expires_at>now() LIMIT 1`,
     [tokenHash(token)]
   );
-  const user = result.rows[0] ?? null;
-  if (user) await ensurePersonalWorkspace(user);
-  return user;
+  return result.rows[0] ?? null;
 }
 
 export async function requireUser() {
