@@ -12,10 +12,14 @@ export type Asset = {
   serial_number: string | null;
   purchase_date: string | null;
   warranty_until: string | null;
+  next_service_date: string | null;
   location: string | null;
   notes: string | null;
   visibility: "PRIVATE" | "LINK" | "PUBLIC";
+  favorite: boolean;
+  archived_at: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 export type AssetEvent = {
@@ -42,7 +46,10 @@ export function newPublicId() {
 }
 
 export async function listAssets(ownerId: string) {
-  const result = await query<Asset>("SELECT * FROM assets WHERE owner_id=$1 ORDER BY created_at DESC", [ownerId]);
+  const result = await query<Asset>(
+    "SELECT * FROM assets WHERE owner_id=$1 ORDER BY favorite DESC, updated_at DESC, created_at DESC",
+    [ownerId]
+  );
   return result.rows;
 }
 
@@ -52,7 +59,10 @@ export async function getOwnedAsset(ownerId: string, id: string) {
 }
 
 export async function getShareableAsset(publicId: string) {
-  const result = await query<Asset>("SELECT * FROM assets WHERE public_id=$1 AND visibility <> 'PRIVATE' LIMIT 1", [publicId]);
+  const result = await query<Asset>(
+    "SELECT * FROM assets WHERE public_id=$1 AND visibility <> 'PRIVATE' AND archived_at IS NULL LIMIT 1",
+    [publicId]
+  );
   return result.rows[0] ?? null;
 }
 
@@ -70,4 +80,16 @@ export async function getDocuments(assetId: string, publicOnly = false) {
     : "SELECT * FROM asset_documents WHERE asset_id=$1 ORDER BY created_at DESC";
   const result = await query<AssetDocument>(sql, [assetId]);
   return result.rows;
+}
+
+export function isDueSoon(value: string | null, days = 30) {
+  if (!value) return false;
+  const due = new Date(`${value}T12:00:00`).getTime();
+  const now = Date.now();
+  return due >= now && due <= now + days * 24 * 60 * 60 * 1000;
+}
+
+export function isOverdue(value: string | null) {
+  if (!value) return false;
+  return new Date(`${value}T23:59:59`).getTime() < Date.now();
 }
