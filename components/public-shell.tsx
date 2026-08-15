@@ -1,8 +1,9 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import styles from "@/app/public-pages.module.css";
 
-export function PublicShell({ children }: { children: React.ReactNode }) {
+export function PublicShell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
