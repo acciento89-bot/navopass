@@ -20,6 +20,12 @@ function checked(formData: FormData, key: string) {
   return formData.get(key) === "on";
 }
 
+function integer(formData: FormData, key: string, fallback: number, min: number, max: number) {
+  const raw = Number.parseInt(String(formData.get(key) ?? ""), 10);
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.max(min, Math.min(max, raw));
+}
+
 function visibilityValue(formData: FormData) {
   const value = text(formData, "visibility", 20) ?? "LINK";
   return VISIBILITIES.has(value) ? value : "LINK";
@@ -27,6 +33,8 @@ function visibilityValue(formData: FormData) {
 
 function revalidateAsset(assetId: string, publicId?: string) {
   revalidatePath("/app");
+  revalidatePath("/app/service");
+  revalidatePath("/app/activity");
   revalidatePath(`/app/assets/${assetId}`);
   if (publicId) revalidatePath(`/p/${publicId}`);
 }
@@ -38,8 +46,8 @@ export async function createAssetAction(formData: FormData) {
 
   const result = await query<{ id: string }>(
     `INSERT INTO assets
-      (owner_id,public_id,name,category,manufacturer,model,serial_number,purchase_date,warranty_until,next_service_date,location,notes,visibility)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      (owner_id,public_id,name,category,manufacturer,model,serial_number,purchase_date,warranty_until,next_service_date,service_interval_months,location,notes,visibility)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING id`,
     [
       user.id,
@@ -52,12 +60,15 @@ export async function createAssetAction(formData: FormData) {
       text(formData, "purchaseDate", 20),
       text(formData, "warrantyUntil", 20),
       text(formData, "nextServiceDate", 20),
+      integer(formData, "serviceIntervalMonths", 12, 1, 120),
       text(formData, "location", 200),
       text(formData, "notes", 5000),
       visibilityValue(formData),
     ]
   );
   revalidatePath("/app");
+  revalidatePath("/app/service");
+  revalidatePath("/app/activity");
   redirect(`/app/assets/${result.rows[0].id}`);
 }
 
@@ -72,9 +83,9 @@ export async function updateAssetAction(formData: FormData) {
   await query(
     `UPDATE assets SET
       name=$1, category=$2, manufacturer=$3, model=$4, serial_number=$5,
-      purchase_date=$6, warranty_until=$7, next_service_date=$8, location=$9,
-      notes=$10, visibility=$11, updated_at=now()
-     WHERE id=$12 AND owner_id=$13`,
+      purchase_date=$6, warranty_until=$7, next_service_date=$8, service_interval_months=$9,
+      location=$10, notes=$11, visibility=$12, updated_at=now()
+     WHERE id=$13 AND owner_id=$14`,
     [
       name,
       text(formData, "category", 80) ?? "Sonstiges",
@@ -84,6 +95,7 @@ export async function updateAssetAction(formData: FormData) {
       text(formData, "purchaseDate", 20),
       text(formData, "warrantyUntil", 20),
       text(formData, "nextServiceDate", 20),
+      integer(formData, "serviceIntervalMonths", asset.service_interval_months || 12, 1, 120),
       text(formData, "location", 200),
       text(formData, "notes", 5000),
       visibilityValue(formData),
@@ -95,12 +107,48 @@ export async function updateAssetAction(formData: FormData) {
   redirect(`/app/assets/${assetId}`);
 }
 
+export async function completeServiceAction(formData: FormData) {
+  const user = await requireUser();
+  const assetId = text(formData, "assetId", 80);
+  if (!assetId) return;
+  const asset = await getOwnedAsset(user.id, assetId);
+  if (!asset || asset.archived_at) return;
+
+  const provider = text(formData, "provider", 200);
+  const note = text(formData, "note", 1000);
+  await query(
+    `INSERT INTO asset_events (asset_id,title,event_type,event_date,description,provider,is_public)
+     VALUES ($1,'Wartung durchgeführt','SERVICE',current_date,$2,$3,true)`,
+    [assetId, note ?? "Wartung über das NavoPass Service-Center als erledigt markiert.", provider]
+  );
+  await query(
+    `UPDATE assets
+     SET next_service_date=(current_date + make_interval(months => GREATEST(1, LEAST(service_interval_months,120))))::date,
+         updated_at=now()
+     WHERE id=$1 AND owner_id=$2`,
+    [assetId, user.id]
+  );
+  revalidateAsset(assetId, asset.public_id);
+}
+
+export async function rescheduleServiceAction(formData: FormData) {
+  const user = await requireUser();
+  const assetId = text(formData, "assetId", 80);
+  const nextDate = text(formData, "nextServiceDate", 20);
+  if (!assetId || !nextDate || !/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) return;
+  const asset = await getOwnedAsset(user.id, assetId);
+  if (!asset || asset.archived_at) return;
+  await query("UPDATE assets SET next_service_date=$1::date, updated_at=now() WHERE id=$2 AND owner_id=$3", [nextDate, assetId, user.id]);
+  revalidateAsset(assetId, asset.public_id);
+}
+
 export async function toggleFavoriteAction(formData: FormData) {
   const user = await requireUser();
   const assetId = text(formData, "assetId", 80);
   if (!assetId) return;
   await query("UPDATE assets SET favorite=NOT favorite, updated_at=now() WHERE id=$1 AND owner_id=$2", [assetId, user.id]);
   revalidatePath("/app");
+  revalidatePath("/app/service");
   revalidatePath(`/app/assets/${assetId}`);
 }
 
@@ -127,8 +175,8 @@ export async function duplicateAssetAction(formData: FormData) {
 
   const result = await query<{ id: string }>(
     `INSERT INTO assets
-      (owner_id,public_id,name,category,manufacturer,model,serial_number,purchase_date,warranty_until,next_service_date,location,notes,visibility)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      (owner_id,public_id,name,category,manufacturer,model,serial_number,purchase_date,warranty_until,next_service_date,service_interval_months,location,notes,visibility)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING id`,
     [
       user.id,
@@ -141,12 +189,14 @@ export async function duplicateAssetAction(formData: FormData) {
       asset.purchase_date,
       asset.warranty_until,
       asset.next_service_date,
+      asset.service_interval_months,
       asset.location,
       asset.notes,
       "PRIVATE",
     ]
   );
   revalidatePath("/app");
+  revalidatePath("/app/service");
   redirect(`/app/assets/${result.rows[0].id}`);
 }
 
@@ -166,6 +216,8 @@ export async function deleteAssetAction(formData: FormData) {
     })
   );
   revalidatePath("/app");
+  revalidatePath("/app/service");
+  revalidatePath("/app/activity");
   redirect("/app");
 }
 
