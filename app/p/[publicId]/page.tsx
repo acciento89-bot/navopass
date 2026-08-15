@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDocuments, getEvents, getShareableAsset } from "@/lib/assets";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -16,6 +17,19 @@ function isImageUrl(url: string) {
 
 function isPdfUrl(url: string) {
   return /\.pdf(?:$|[?#])/i.test(decodedUrl(url));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ publicId: string }> }): Promise<Metadata> {
+  const { publicId } = await params;
+  const asset = await getShareableAsset(publicId.toUpperCase());
+  if (!asset) return { title: "Pass nicht gefunden", robots: { index: false, follow: false } };
+
+  const publicIndex = asset.visibility === "PUBLIC";
+  return {
+    title: `${asset.name} · Digitaler Objektpass`,
+    description: [asset.manufacturer, asset.model, asset.category].filter(Boolean).join(" · "),
+    robots: { index: publicIndex, follow: publicIndex },
+  };
 }
 
 export default async function PublicPassPage({ params }: { params: Promise<{ publicId: string }> }) {
