@@ -82,7 +82,7 @@ export const SCHEMA_STATEMENTS = [
     )
     ON CONFLICT DO NOTHING`,
   `INSERT INTO workspace_members (workspace_id,user_id,role)
-    SELECT w.id,w.owner_id,'OWNER' FROM workspaces w WHERE w.kind='PERSONAL'
+    SELECT w.id,w.owner_id,'OWNER' FROM workspaces w
     ON CONFLICT (workspace_id,user_id) DO UPDATE SET role='OWNER'`,
   `UPDATE assets a SET workspace_id=w.id
     FROM workspaces w
