@@ -38,6 +38,7 @@ export default function PrivacyPage() {
           <section>
             <h2>4. Registrierung und Benutzerkonto</h2>
             <p>Bei der Registrierung werden Name, E-Mail-Adresse und ein Passwort verarbeitet. Das Passwort wird nicht im Klartext gespeichert, sondern als kryptographischer Passwort-Hash. Die Daten werden benötigt, um das Benutzerkonto bereitzustellen, Anmeldungen zu ermöglichen und den NavoPass-Dienst zu erfüllen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.</p>
+            <p>Zum Nachweis der bei der Registrierung abgegebenen Erklärung speichert NavoPass außerdem den Zeitpunkt der Akzeptanz der Nutzungsbedingungen, die dabei geltende Versionskennung der Nutzungsbedingungen sowie den Zeitpunkt, zu dem die Datenschutzerklärung zur Kenntnis genommen wurde. Diese Angaben dienen der Dokumentation des Vertragsabschlusses und der Erfüllung von Nachweis- und Rechenschaftspflichten.</p>
           </section>
 
           <section>
