@@ -1,9 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { query } from "@/lib/db";
+import type { WorkspaceRole } from "@/lib/workspaces";
 
 export type Asset = {
   id: string;
   owner_id: string;
+  workspace_id: string | null;
+  workspace_name?: string | null;
+  access_role?: WorkspaceRole | null;
   public_id: string;
   name: string;
   category: string;
@@ -50,22 +54,38 @@ export type ActivityItem = {
   detail: string | null;
   asset_id: string;
   asset_name: string;
+  workspace_name: string | null;
 };
 
 export function newPublicId() {
   return randomBytes(8).toString("base64url").replace(/[_-]/g, "").slice(0, 10).toUpperCase();
 }
 
-export async function listAssets(ownerId: string) {
+const accessibleAssetSelect = `
+  SELECT a.*,w.name AS workspace_name,
+    COALESCE(wm.role,CASE WHEN a.owner_id=$1 THEN 'OWNER'::text ELSE NULL END) AS access_role
+  FROM assets a
+  LEFT JOIN workspaces w ON w.id=a.workspace_id
+  LEFT JOIN workspace_members wm ON wm.workspace_id=a.workspace_id AND wm.user_id=$1
+`;
+
+export async function listAssets(userId: string) {
   const result = await query<Asset>(
-    "SELECT * FROM assets WHERE owner_id=$1 ORDER BY favorite DESC, updated_at DESC, created_at DESC",
-    [ownerId]
+    `${accessibleAssetSelect}
+     WHERE a.owner_id=$1 OR wm.user_id IS NOT NULL
+     ORDER BY a.favorite DESC,a.updated_at DESC,a.created_at DESC`,
+    [userId]
   );
   return result.rows;
 }
 
-export async function getOwnedAsset(ownerId: string, id: string) {
-  const result = await query<Asset>("SELECT * FROM assets WHERE id=$1 AND owner_id=$2 LIMIT 1", [id, ownerId]);
+export async function getOwnedAsset(userId: string, id: string) {
+  const result = await query<Asset>(
+    `${accessibleAssetSelect}
+     WHERE a.id=$2 AND (a.owner_id=$1 OR wm.user_id IS NOT NULL)
+     LIMIT 1`,
+    [userId, id]
+  );
   return result.rows[0] ?? null;
 }
 
@@ -79,8 +99,8 @@ export async function getShareableAsset(publicId: string) {
 
 export async function getEvents(assetId: string, publicOnly = false) {
   const sql = publicOnly
-    ? "SELECT * FROM asset_events WHERE asset_id=$1 AND is_public=true ORDER BY event_date DESC, created_at DESC"
-    : "SELECT * FROM asset_events WHERE asset_id=$1 ORDER BY event_date DESC, created_at DESC";
+    ? "SELECT * FROM asset_events WHERE asset_id=$1 AND is_public=true ORDER BY event_date DESC,created_at DESC"
+    : "SELECT * FROM asset_events WHERE asset_id=$1 ORDER BY event_date DESC,created_at DESC";
   const result = await query<AssetEvent>(sql, [assetId]);
   return result.rows;
 }
@@ -93,54 +113,43 @@ export async function getDocuments(assetId: string, publicOnly = false) {
   return result.rows;
 }
 
-export async function listRecentActivity(ownerId: string, limit = 80) {
+export async function listRecentActivity(userId: string, limit = 80) {
   const safeLimit = Math.max(1, Math.min(limit, 200));
   const result = await query<ActivityItem>(
-    `SELECT * FROM (
-      SELECT
-        e.id,
-        'EVENT'::text AS activity_type,
-        e.created_at AS happened_at,
-        e.title,
-        COALESCE(e.provider, e.event_type) AS detail,
-        a.id AS asset_id,
-        a.name AS asset_name
-      FROM asset_events e
-      JOIN assets a ON a.id=e.asset_id
-      WHERE a.owner_id=$1
-
-      UNION ALL
-
-      SELECT
-        d.id,
-        'DOCUMENT'::text AS activity_type,
-        d.created_at AS happened_at,
-        d.title,
-        d.kind AS detail,
-        a.id AS asset_id,
-        a.name AS asset_name
-      FROM asset_documents d
-      JOIN assets a ON a.id=d.asset_id
-      WHERE a.owner_id=$1
-
-      UNION ALL
-
-      SELECT
-        a.id,
-        'ASSET'::text AS activity_type,
-        a.updated_at AS happened_at,
-        a.name AS title,
-        CASE WHEN a.archived_at IS NULL THEN 'Pass aktualisiert' ELSE 'Pass archiviert' END AS detail,
-        a.id AS asset_id,
-        a.name AS asset_name
+    `WITH accessible AS (
+      SELECT a.id,a.name,a.updated_at,a.archived_at,a.workspace_id,w.name AS workspace_name
       FROM assets a
-      WHERE a.owner_id=$1
-    ) activity
-    ORDER BY happened_at DESC
-    LIMIT $2`,
-    [ownerId, safeLimit]
+      LEFT JOIN workspaces w ON w.id=a.workspace_id
+      LEFT JOIN workspace_members wm ON wm.workspace_id=a.workspace_id AND wm.user_id=$1
+      WHERE a.owner_id=$1 OR wm.user_id IS NOT NULL
+    )
+    SELECT * FROM (
+      SELECT e.id,'EVENT'::text AS activity_type,e.created_at AS happened_at,e.title,
+        COALESCE(e.provider,e.event_type) AS detail,a.id AS asset_id,a.name AS asset_name,a.workspace_name
+      FROM asset_events e JOIN accessible a ON a.id=e.asset_id
+      UNION ALL
+      SELECT d.id,'DOCUMENT'::text AS activity_type,d.created_at AS happened_at,d.title,
+        d.kind AS detail,a.id AS asset_id,a.name AS asset_name,a.workspace_name
+      FROM asset_documents d JOIN accessible a ON a.id=d.asset_id
+      UNION ALL
+      SELECT a.id,'ASSET'::text AS activity_type,a.updated_at AS happened_at,a.name AS title,
+        CASE WHEN a.archived_at IS NULL THEN 'Pass aktualisiert' ELSE 'Pass archiviert' END AS detail,
+        a.id AS asset_id,a.name AS asset_name,a.workspace_name
+      FROM accessible a
+    ) activity ORDER BY happened_at DESC LIMIT $2`,
+    [userId, safeLimit]
   );
   return result.rows;
+}
+
+export function roleCanEdit(asset: Asset, userId: string) {
+  if (asset.owner_id === userId) return true;
+  return asset.access_role === "OWNER" || asset.access_role === "ADMIN" || asset.access_role === "EDITOR";
+}
+
+export function roleCanManage(asset: Asset, userId: string) {
+  if (asset.owner_id === userId) return true;
+  return asset.access_role === "OWNER" || asset.access_role === "ADMIN";
 }
 
 export function isDueSoon(value: string | null, days = 30) {
