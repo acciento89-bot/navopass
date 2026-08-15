@@ -2,15 +2,10 @@ import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { requireUser } from "@/lib/auth";
 import { listAssets } from "@/lib/assets";
+import { dateOnly, daysUntil } from "@/lib/date";
 import { listPendingInvitesForEmail } from "@/lib/workspaces";
 
 export const dynamic = "force-dynamic";
-
-function diffDays(value: string) {
-  const due = new Date(`${value}T12:00:00`).getTime();
-  const now = new Date(); now.setHours(12, 0, 0, 0);
-  return Math.ceil((due - now.getTime()) / 86400000);
-}
 
 function relative(days: number) {
   if (days < 0) return `${Math.abs(days)} ${Math.abs(days) === 1 ? "Tag" : "Tage"} überfällig`;
@@ -26,13 +21,15 @@ export default async function NotificationsPage() {
   const invites = await listPendingInvitesForEmail(user.email);
   const reminders = assets.flatMap((asset) => {
     const result: { key: string; type: "SERVICE" | "WARRANTY"; days: number; date: string; asset: typeof asset }[] = [];
-    if (asset.next_service_date) {
-      const days = diffDays(asset.next_service_date);
-      if (days <= reminderDays) result.push({ key: `${asset.id}-service`, type: "SERVICE", days, date: asset.next_service_date, asset });
+    const serviceDate = dateOnly(asset.next_service_date);
+    const serviceDays = daysUntil(asset.next_service_date);
+    if (serviceDate && serviceDays !== null && serviceDays <= reminderDays) {
+      result.push({ key: `${asset.id}-service`, type: "SERVICE", days: serviceDays, date: serviceDate, asset });
     }
-    if (asset.warranty_until) {
-      const days = diffDays(asset.warranty_until);
-      if (days <= reminderDays) result.push({ key: `${asset.id}-warranty`, type: "WARRANTY", days, date: asset.warranty_until, asset });
+    const warrantyDate = dateOnly(asset.warranty_until);
+    const warrantyDays = daysUntil(asset.warranty_until);
+    if (warrantyDate && warrantyDays !== null && warrantyDays <= reminderDays) {
+      result.push({ key: `${asset.id}-warranty`, type: "WARRANTY", days: warrantyDays, date: warrantyDate, asset });
     }
     return result;
   }).sort((a, b) => a.days - b.days);
