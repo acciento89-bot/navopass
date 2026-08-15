@@ -30,8 +30,8 @@ const steps = [
   },
   {
     number: "2",
-    title: "Historie sammeln",
-    text: "Lade Dokumente hoch und halte Wartungen, Reparaturen und Ereignisse fest.",
+    title: "Historie & Fristen pflegen",
+    text: "Lade Dokumente hoch, dokumentiere Wartungen und lass dich an Service- und Garantiefristen erinnern.",
     icon: <Icon size={31}><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5M9 12h6M9 16h6"/><circle cx="18" cy="18" r="3"/></Icon>,
   },
   {
@@ -42,8 +42,8 @@ const steps = [
   },
   {
     number: "4",
-    title: "Weitergeben",
-    text: "Gib den Pass sicher weiter – zum Beispiel bei Verkauf, Vermietung oder im Servicefall.",
+    title: "Gemeinsam nutzen",
+    text: "Organisiere Pässe allein, im Haushalt oder im Team und steuere mit Rollen, wer ansehen oder bearbeiten darf.",
     icon: <Icon size={31}><circle cx="9" cy="8" r="4"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 9h4M19 7v4"/></Icon>,
   },
 ];
@@ -61,15 +61,15 @@ const assetTypes = [
 
 const privateBenefits = [
   "Wichtige Dokumente und Garantien sicher aufbewahren",
-  "Wartungen rechtzeitig planen und nachvollziehen",
+  "Wartungs- und Garantiefristen rechtzeitig im Blick behalten",
   "QR-Code bei Reparaturen oder Weitergabe nutzen",
-  "Mehr Überblick und weniger Papierkram",
+  "Pässe mit der Familie in einem Haushalt gemeinsam verwalten",
 ];
 
 const businessBenefits = [
   "Inventar und Betriebsmittel digital erfassen",
   "Wartungsintervalle und Prüfungen im Griff behalten",
-  "Reibungslose Zusammenarbeit im Team",
+  "Teams mit Admin-, Bearbeiter- und Betrachterrollen organisieren",
   "Zeit sparen und nachvollziehbar dokumentieren",
 ];
 
@@ -83,7 +83,7 @@ export default function HomePage() {
             <a href="#produkt">Produkt</a>
             <a href="#zielgruppen">Für wen?</a>
             <a href="#so-gehts">So funktioniert&apos;s</a>
-            <a href="#start">Preise</a>
+            <a href="#start">Loslegen</a>
             <a href="#footer">Ressourcen</a>
           </nav>
           <div className={styles.headerActions}>
@@ -105,7 +105,7 @@ export default function HomePage() {
               Der digitale Pass für alles, was dir gehört
             </div>
             <h1>Alles, was dir gehört,<br/>bekommt seinen eigenen<br/><em>digitalen Pass.</em></h1>
-            <p>Dokumente, Garantien, Reparaturen, Wartungen und die gesamte Historie – sicher an einem Ort, jederzeit per QR-Code verfügbar und einfach weiterzugeben.</p>
+            <p>Dokumente, Garantien, Reparaturen, Wartungen und Erinnerungen – sicher an einem Ort, per QR-Code verfügbar und auf Wunsch gemeinsam mit Familie oder Team verwaltet.</p>
             <div className={styles.heroActions}>
               <Link href="/register" className={styles.primaryCta}>Jetzt starten <span>→</span></Link>
               <a href="#demo" className={styles.secondaryCta}>Beispiel ansehen <span className={styles.play}>▷</span></a>
@@ -113,7 +113,7 @@ export default function HomePage() {
             <div className={styles.trustBar}>
               <span><Icon size={17}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon> Datenschutz im Fokus</span>
               <span><Icon size={17}><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></Icon> In Sekunden eingerichtet</span>
-              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Überall verfügbar</span>
+              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Persönlich, Haushalt & Team</span>
             </div>
           </div>
 
@@ -148,7 +148,7 @@ export default function HomePage() {
 
               <div className={styles.demoRows}>
                 <div><span>Status</span><b className={styles.statusOk}>Alles in Ordnung</b><strong>›</strong></div>
-                <div><span>Standort</span><b>Musterstraße 12, 12345 Musterstadt</b><strong>›</strong></div>
+                <div><span>Bereich</span><b>Familie · 3 Mitglieder</b><strong>›</strong></div>
               </div>
             </div>
           </div>
@@ -195,7 +195,7 @@ export default function HomePage() {
             <img src="/navopass-private.svg" alt="Helles Zuhause als Beispiel für private Nutzung" />
           </div>
           <div className={styles.audienceContent}>
-            <span>FÜR PRIVATPERSONEN</span>
+            <span>FÜR PRIVATPERSONEN & FAMILIEN</span>
             <h2>Alles im Blick. Zuhause und unterwegs.</h2>
             <ul>
               {privateBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
@@ -205,8 +205,8 @@ export default function HomePage() {
 
         <article className={styles.audienceCard}>
           <div className={styles.audienceContent}>
-            <span>FÜR UNTERNEHMEN</span>
-            <h2>Effizient verwalten. Einfach skalieren.</h2>
+            <span>FÜR TEAMS & UNTERNEHMEN</span>
+            <h2>Effizient verwalten. Gemeinsam arbeiten.</h2>
             <ul>
               {businessBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
             </ul>
@@ -221,7 +221,7 @@ export default function HomePage() {
         <div className={styles.ctaShield}><Icon size={28}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon></div>
         <div>
           <h2>Bereit für deinen ersten digitalen Pass?</h2>
-          <p>Starte jetzt kostenlos und behalte alles im Blick, was dir gehört.</p>
+          <p>Starte persönlich und erweitere NavoPass bei Bedarf um Haushalt oder Team.</p>
         </div>
         <div className={styles.ctaButtons}>
           <Link href="/register" className={styles.primaryCta}>Jetzt starten <span>→</span></Link>
@@ -232,8 +232,8 @@ export default function HomePage() {
       <footer className={styles.footer} id="footer">
         <div className={styles.footerInner}>
           <div className={styles.footerBrand}><Brand /><p>Der digitale Pass für deine Dinge.</p></div>
-          <div><b>Produkt</b><a href="#so-gehts">Funktionen</a><a href="#zielgruppen">Für wen?</a><a href="#produkt">Sicherheit</a><a href="#start">Integrationen</a></div>
-          <div><b>Ressourcen</b><a href="#so-gehts">Hilfe-Center</a><a href="#produkt">Blog</a><a href="#produkt">Vorlagen</a></div>
+          <div><b>Produkt</b><a href="#so-gehts">Funktionen</a><a href="#zielgruppen">Für wen?</a><a href="#produkt">Sicherheit</a><a href="#start">Zusammenarbeit</a></div>
+          <div><b>Ressourcen</b><a href="#so-gehts">Hilfe-Center</a><a href="#produkt">Service & Fristen</a><a href="#produkt">QR-Pässe</a></div>
           <div><b>Unternehmen</b><a href="https://kamilunavo.com">Über uns</a><a href="https://kamilunavo.com/support">Support</a></div>
           <div><b>Rechtliches</b><a href="https://kamilunavo.com/datenschutz">Datenschutz</a><a href="https://kamilunavo.com/impressum">Impressum</a><span>© 2026 Kamilunavo</span></div>
         </div>
