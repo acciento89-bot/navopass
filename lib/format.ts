@@ -1,6 +1,9 @@
-export function formatDate(value: string | null) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`));
+import { dateOnlyAsDate, type DateOnlyInput } from "@/lib/date";
+
+export function formatDate(value: DateOnlyInput) {
+  const parsed = dateOnlyAsDate(value);
+  if (!parsed) return "—";
+  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(parsed);
 }
 
 export function formatMoney(cents: number | null) {
