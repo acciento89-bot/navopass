@@ -41,23 +41,32 @@ async function ensureSchema() {
   if (!globalForDb.navopassSchemaReady) {
     globalForDb.navopassSchemaReady = (async () => {
       const client = await pool.connect();
+      let locked = false;
       try {
         // Next.js can start more than one worker. Serialize DDL across workers.
         await client.query("SELECT pg_advisory_lock($1,$2)", [71842, 90411]);
-        for (let index = 0; index < SCHEMA_STATEMENTS.length; index += 1) {
-          try {
-            await client.query(SCHEMA_STATEMENTS[index]);
-          } catch (error) {
-            console.error("NavoPass schema migration failed", {
-              statement: index + 1,
-              preview: SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120),
-              error,
-            });
-            throw error;
+        locked = true;
+        await client.query("BEGIN");
+        try {
+          for (let index = 0; index < SCHEMA_STATEMENTS.length; index += 1) {
+            try {
+              await client.query(SCHEMA_STATEMENTS[index]);
+            } catch (error) {
+              console.error("NavoPass schema migration failed", {
+                statement: index + 1,
+                preview: SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120),
+                error,
+              });
+              throw error;
+            }
           }
+          await client.query("COMMIT");
+        } catch (error) {
+          await client.query("ROLLBACK").catch(() => undefined);
+          throw error;
         }
       } finally {
-        await client.query("SELECT pg_advisory_unlock($1,$2)", [71842, 90411]).catch(() => undefined);
+        if (locked) await client.query("SELECT pg_advisory_unlock($1,$2)", [71842, 90411]).catch(() => undefined);
         client.release();
       }
     })().catch((error) => {
