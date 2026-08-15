@@ -1,5 +1,9 @@
-import { Pool, type PoolConfig, type QueryResultRow } from "pg";
+import { Pool, types, type PoolConfig, type QueryResultRow } from "pg";
 import { SCHEMA_STATEMENTS } from "@/lib/schema";
+
+// PostgreSQL DATE (OID 1082) is a calendar day, not a timestamp.
+// Keep it as YYYY-MM-DD to avoid timezone shifts and Date-object crashes.
+types.setTypeParser(1082, (value) => value);
 
 const globalForDb = globalThis as unknown as {
   navopassPool?: Pool;
@@ -36,8 +40,25 @@ if (process.env.NODE_ENV !== "production") globalForDb.navopassPool = pool;
 async function ensureSchema() {
   if (!globalForDb.navopassSchemaReady) {
     globalForDb.navopassSchemaReady = (async () => {
-      for (const statement of SCHEMA_STATEMENTS) {
-        await pool.query(statement);
+      const client = await pool.connect();
+      try {
+        // Next.js can start more than one worker. Serialize DDL across workers.
+        await client.query("SELECT pg_advisory_lock($1,$2)", [71842, 90411]);
+        for (let index = 0; index < SCHEMA_STATEMENTS.length; index += 1) {
+          try {
+            await client.query(SCHEMA_STATEMENTS[index]);
+          } catch (error) {
+            console.error("NavoPass schema migration failed", {
+              statement: index + 1,
+              preview: SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120),
+              error,
+            });
+            throw error;
+          }
+        }
+      } finally {
+        await client.query("SELECT pg_advisory_unlock($1,$2)", [71842, 90411]).catch(() => undefined);
+        client.release();
       }
     })().catch((error) => {
       globalForDb.navopassSchemaReady = undefined;
