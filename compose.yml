@@ -17,14 +17,31 @@ services:
     networks:
       - backend
 
+  migrate:
+    image: postgres:17-alpine
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
+    volumes:
+      - ./db/schema.sql:/schema/schema.sql:ro
+    command:
+      - sh
+      - -c
+      - psql -h db -U navopass -d navopass -v ON_ERROR_STOP=1 -f /schema/schema.sql
+    networks:
+      - backend
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       DB_HOST: db
       DB_PORT: "5432"
