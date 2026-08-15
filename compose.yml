@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: navopass
       POSTGRES_USER: navopass
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-now}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
     volumes:
       - navopass-db:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
@@ -14,19 +14,33 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - backend
 
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://navopass:${POSTGRES_PASSWORD:-change-me-now}@db:5432/navopass
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      DATABASE_URL: postgres://navopass:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}@db:5432/navopass
+      APP_URL: ${APP_URL:-https://navopass.de}
       NODE_ENV: production
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
+    networks:
+      - backend
+      - kamilunavo_frontend
 
 volumes:
   navopass-db:
+
+networks:
+  backend:
+    driver: bridge
+  kamilunavo_frontend:
+    external: true
+    name: kamilunavo-infrastructure_frontend
