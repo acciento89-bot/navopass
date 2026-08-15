@@ -11,6 +11,7 @@ export function AppHeader({ name }: { name: string }) {
       </div>
       <nav className="app-nav" aria-label="App Navigation">
         <Link href="/app" className="app-nav-link">Meine Pässe</Link>
+        <Link href="/app/settings" className="app-nav-link">Einstellungen</Link>
         <Link href="/app/assets/new" className="button small">+ Neues Objekt</Link>
         <form action={logoutAction}>
           <button className="button ghost small" type="submit">Abmelden</button>
