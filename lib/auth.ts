@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { query } from "@/lib/db";
-import type { Plan } from "@/lib/plans";
+import type { Plan } from "@/lib/plan-config";
 
 const scrypt = promisify(scryptCallback);
 const COOKIE_NAME = "navopass_session";
