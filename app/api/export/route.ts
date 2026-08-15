@@ -18,7 +18,7 @@ export async function GET() {
 
   return NextResponse.json({
     exported_at: new Date().toISOString(),
-    account: { id: user.id, name: user.name, email: user.email, reminder_days: user.reminder_days ?? 30 },
+    account: { id: user.id, name: user.name, email: user.email, reminder_days: user.reminder_days ?? 30, plan: user.plan ?? "FREE" },
     workspace_memberships: memberships.rows,
     invitations_created_by_me: invites.rows,
     owned_assets: assets.rows,
