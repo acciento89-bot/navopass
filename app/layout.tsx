@@ -3,6 +3,7 @@ import "./globals.css";
 import "./service-extra.css";
 import "./collaboration.css";
 import "./finish.css";
+import "./billing.css";
 
 export const metadata: Metadata = {
   title: { default: "NavoPass", template: "%s · NavoPass" },
