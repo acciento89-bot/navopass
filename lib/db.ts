@@ -1,6 +1,10 @@
 import { Pool, type PoolConfig, type QueryResultRow } from "pg";
+import { SCHEMA_STATEMENTS } from "@/lib/schema";
 
-const globalForDb = globalThis as unknown as { navopassPool?: Pool };
+const globalForDb = globalThis as unknown as {
+  navopassPool?: Pool;
+  navopassSchemaReady?: Promise<void>;
+};
 
 function poolConfig(): PoolConfig {
   const host = process.env.DB_HOST;
@@ -8,10 +12,6 @@ function poolConfig(): PoolConfig {
   const password = process.env.DB_PASSWORD;
   const database = process.env.DB_NAME;
 
-  // In production we pass the PostgreSQL credentials as separate values.
-  // This deliberately avoids constructing a database URL from a password:
-  // characters such as @, :, / or # are valid in passwords but have special
-  // meaning inside URLs and can otherwise break authentication/parsing.
   if (host && user && password && database) {
     return {
       host,
@@ -33,6 +33,22 @@ export const pool = globalForDb.navopassPool ?? new Pool(poolConfig());
 
 if (process.env.NODE_ENV !== "production") globalForDb.navopassPool = pool;
 
+async function ensureSchema() {
+  if (!globalForDb.navopassSchemaReady) {
+    globalForDb.navopassSchemaReady = (async () => {
+      for (const statement of SCHEMA_STATEMENTS) {
+        await pool.query(statement);
+      }
+    })().catch((error) => {
+      globalForDb.navopassSchemaReady = undefined;
+      throw error;
+    });
+  }
+
+  await globalForDb.navopassSchemaReady;
+}
+
 export async function query<T extends QueryResultRow>(text: string, values: unknown[] = []) {
+  await ensureSchema();
   return pool.query<T>(text, values);
 }
