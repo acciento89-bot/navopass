@@ -32,8 +32,10 @@ services:
     expose:
       - "3000"
     networks:
-      - backend
-      - kamilunavo_frontend
+      backend:
+      kamilunavo_frontend:
+        aliases:
+          - navopass
 
 volumes:
   navopass-db:
