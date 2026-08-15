@@ -80,6 +80,7 @@ ALTER TABLE assets ADD COLUMN IF NOT EXISTS next_service_date date;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS service_interval_months integer NOT NULL DEFAULT 12;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS favorite boolean NOT NULL DEFAULT false;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+UPDATE assets a SET owner_id=w.owner_id FROM workspaces w WHERE a.workspace_id=w.id AND a.owner_id<>w.owner_id;
 CREATE INDEX IF NOT EXISTS assets_owner_id_idx ON assets(owner_id);
 CREATE INDEX IF NOT EXISTS assets_workspace_idx ON assets(workspace_id);
 CREATE INDEX IF NOT EXISTS assets_public_id_idx ON assets(public_id);
