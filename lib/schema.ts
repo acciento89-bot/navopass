@@ -11,6 +11,12 @@ export const SCHEMA_STATEMENTS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at timestamptz`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version text`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_acknowledged_at timestamptz`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'FREE'`,
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_plan_check') THEN
+       ALTER TABLE users ADD CONSTRAINT users_plan_check CHECK (plan IN ('FREE','PLUS','FAMILY','BUSINESS'));
+     END IF;
+   END $$`,
   `CREATE TABLE IF NOT EXISTS sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -116,7 +122,9 @@ export const SCHEMA_STATEMENTS = [
     url text NOT NULL,
     kind text NOT NULL DEFAULT 'Dokument',
     is_public boolean NOT NULL DEFAULT true,
+    size_bytes bigint NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE asset_documents ADD COLUMN IF NOT EXISTS size_bytes bigint NOT NULL DEFAULT 0`,
   `CREATE INDEX IF NOT EXISTS asset_documents_asset_id_idx ON asset_documents(asset_id)`,
 ] as const;
