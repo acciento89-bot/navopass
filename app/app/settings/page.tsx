@@ -9,18 +9,50 @@ import {
 import { AppHeader } from "@/components/app-header";
 import { ConfirmButton } from "@/components/confirm-button";
 import { countActiveSessions, requireUser } from "@/lib/auth";
+import { formatEuro, formatStorage, getAccountPlanState, getReservedSeatCount } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
+
+function percent(used: number, max: number | null) {
+  if (max === null || max <= 0) return 0;
+  return Math.max(0, Math.min(100, (used / max) * 100));
+}
+
+function tone(used: number, max: number | null) {
+  if (max === null) return "";
+  if (used >= max) return "over";
+  if (used / Math.max(1, max) >= 0.8) return "warning";
+  return "";
+}
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ profileError?: string; profileSuccess?: string; passwordError?: string; passwordSuccess?: string; deleteError?: string; reminderSuccess?: string; sessionsSuccess?: string }> }) {
   const user = await requireUser();
   const params = await searchParams;
-  const sessionCount = await countActiveSessions(user.id);
+  const [sessionCount, planState, reservedSeats] = await Promise.all([
+    countActiveSessions(user.id),
+    getAccountPlanState(user.id),
+    getReservedSeatCount(user.id),
+  ]);
+  const { definition, usage } = planState;
+  const workspaceLimit = definition.maxSharedWorkspaces;
+  const isOverLimit = usage.assets > definition.maxAssets || usage.storageBytes > definition.maxStorageBytes || reservedSeats > definition.maxSeats || (workspaceLimit !== null && usage.sharedWorkspaces > workspaceLimit);
 
   return (
     <main className="app-page"><div className="container"><AppHeader name={user.name} /><div className="page-back"><Link href="/app">← Meine Pässe</Link></div>
-      <section className="settings-head"><span className="eyebrow">Konto & Datenschutz</span><h1>Einstellungen</h1><p>Profil, Erinnerungen, Sicherheit, Datenexport und dein NavoPass-Konto an einem Ort.</p></section>
+      <section className="settings-head"><span className="eyebrow">Konto & Datenschutz</span><h1>Einstellungen</h1><p>Tarif, Nutzung, Profil, Erinnerungen, Sicherheit, Datenexport und dein NavoPass-Konto an einem Ort.</p></section>
       <section className="settings-grid">
+        <article className="panel settings-panel plan-panel">
+          <div className="plan-top"><div><span className="eyebrow">Tarif & Nutzung</span><h2>{definition.name}</h2><p>{definition.description}</p><p className="plan-price"><b>{formatEuro(definition.monthlyCents)}</b> / Monat{definition.yearlyCents > 0 ? ` · ${formatEuro(definition.yearlyCents)} / Jahr` : ""}</p></div><span className="plan-badge">Aktueller Tarif</span></div>
+          <div className="plan-usage-grid">
+            <div className="quota-card"><div className="quota-head"><span>Pässe</span><b>{usage.assets} / {definition.maxAssets}</b></div><div className="quota-track"><i className={tone(usage.assets,definition.maxAssets)} style={{width:`${percent(usage.assets,definition.maxAssets)}%`}} /></div><small>Archivierte Pässe zählen mit, werden aber niemals automatisch gelöscht.</small></div>
+            <div className="quota-card"><div className="quota-head"><span>Speicher</span><b>{formatStorage(usage.storageBytes)} / {formatStorage(definition.maxStorageBytes)}</b></div><div className="quota-track"><i className={tone(usage.storageBytes,definition.maxStorageBytes)} style={{width:`${percent(usage.storageBytes,definition.maxStorageBytes)}%`}} /></div><small>Gezählt werden lokal hochgeladene Dateien; externe Links verbrauchen keinen Speicher.</small></div>
+            <div className="quota-card"><div className="quota-head"><span>Nutzerplätze</span><b>{reservedSeats} / {definition.maxSeats}</b></div><div className="quota-track"><i className={tone(reservedSeats,definition.maxSeats)} style={{width:`${percent(reservedSeats,definition.maxSeats)}%`}} /></div><small>Offene Einladungen reservieren bereits einen Platz.</small></div>
+            <div className="quota-card"><div className="quota-head"><span>Gemeinsame Bereiche</span><b>{usage.sharedWorkspaces} / {workspaceLimit === null ? "∞" : workspaceLimit}</b></div><div className="quota-track"><i className={tone(usage.sharedWorkspaces,workspaceLimit)} style={{width:`${workspaceLimit === null ? 12 : percent(usage.sharedWorkspaces,workspaceLimit)}%`}} /></div><small>Persönlicher Bereich zählt nicht gegen dieses Limit.</small></div>
+          </div>
+          {isOverLimit && <div className="limit-note"><b>Deine vorhandenen Daten bleiben erhalten.</b> Das Konto liegt momentan über mindestens einem Tariflimit. NavoPass sperrt deshalb nur neue Pässe, Uploads, Nutzer oder Bereiche, bis wieder Platz frei ist oder ein größerer Tarif aktiv ist.</div>}
+          <div className="plan-actions"><Link className="plan-action-primary" href="/preise">Tarife vergleichen</Link><Link className="plan-action-secondary" href="/kontakt">Mehr als Business benötigt? Kontakt aufnehmen →</Link></div>
+        </article>
+
         <article className="panel settings-panel"><div className="panel-title"><div><span className="eyebrow">Profil</span><h2>Persönliche Daten</h2></div><span className="settings-icon">NP</span></div>{params.profileError && <p className="form-error">{params.profileError}</p>}{params.profileSuccess && <p className="form-success">{params.profileSuccess}</p>}<form action={updateProfileAction} className="compact-form"><label>Name<input name="name" defaultValue={user.name} required /></label><label>E-Mail-Adresse<input name="email" type="email" defaultValue={user.email} required /></label><button className="button small" type="submit">Profil speichern</button></form></article>
 
         <article className="panel settings-panel"><div className="panel-title"><div><span className="eyebrow">Erinnerungen</span><h2>Fristen-Vorlauf</h2></div><span className="settings-icon">!</span></div><p className="muted">NavoPass zeigt Wartungs- und Garantiehinweise innerhalb dieses Zeitraums in der Benachrichtigungszentrale.</p>{params.reminderSuccess && <p className="form-success">{params.reminderSuccess}</p>}<form action={updateReminderSettingsAction} className="compact-form"><label>Erinnern ab<select name="reminderDays" defaultValue={String(user.reminder_days ?? 30)}><option value="7">7 Tage vorher</option><option value="14">14 Tage vorher</option><option value="30">30 Tage vorher</option><option value="60">60 Tage vorher</option><option value="90">90 Tage vorher</option><option value="180">180 Tage vorher</option></select></label><button className="button small" type="submit">Erinnerungen speichern</button></form><Link className="text-link" href="/app/notifications">Benachrichtigungen öffnen →</Link></article>
