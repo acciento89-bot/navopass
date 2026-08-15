@@ -22,6 +22,7 @@ type FileRow = {
   id: string;
   owner_id: string;
   visibility: "PRIVATE" | "LINK" | "PUBLIC";
+  archived_at: string | null;
   is_public: boolean;
   url: string;
 };
@@ -38,7 +39,7 @@ function storedFilename(url: string) {
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string; filename: string }> }) {
   const { id } = await params;
   const result = await query<FileRow>(
-    `SELECT d.id, d.url, d.is_public, a.owner_id, a.visibility
+    `SELECT d.id, d.url, d.is_public, a.owner_id, a.visibility, a.archived_at
      FROM asset_documents d
      JOIN assets a ON a.id=d.asset_id
      WHERE d.id=$1
@@ -50,7 +51,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const user = await getCurrentUser();
   const isOwner = user?.id === document.owner_id;
-  const isShared = document.is_public && document.visibility !== "PRIVATE";
+  const isShared = document.is_public && document.visibility !== "PRIVATE" && !document.archived_at;
   if (!isOwner && !isShared) return new Response("Not found", { status: 404 });
 
   const filename = storedFilename(document.url);
