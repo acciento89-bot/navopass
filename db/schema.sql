@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_days integer NOT NULL DEFAULT 30;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at timestamptz;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_acknowledged_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
