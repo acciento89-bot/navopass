@@ -44,7 +44,7 @@ export function canManage(role: WorkspaceRole | null | undefined) {
   return role === "OWNER" || role === "ADMIN";
 }
 
-export async function ensurePersonalWorkspace(user: { id: string; name: string }) {
+export async function ensurePersonalWorkspace(user: { id: string; name?: string }) {
   let result = await query<{ id: string }>(
     "SELECT id FROM workspaces WHERE owner_id=$1 AND kind='PERSONAL' LIMIT 1",
     [user.id]
@@ -53,8 +53,8 @@ export async function ensurePersonalWorkspace(user: { id: string; name: string }
   if (!result.rows[0]) {
     try {
       result = await query<{ id: string }>(
-        "INSERT INTO workspaces (name,kind,owner_id) VALUES ($1,'PERSONAL',$2) RETURNING id",
-        ["Persönlich", user.id]
+        "INSERT INTO workspaces (name,kind,owner_id) VALUES ('Persönlich','PERSONAL',$1) RETURNING id",
+        [user.id]
       );
     } catch {
       result = await query<{ id: string }>(
@@ -76,7 +76,7 @@ export async function ensurePersonalWorkspace(user: { id: string; name: string }
   return workspaceId;
 }
 
-export async function listUserWorkspaces(userId: string) {
+async function fetchUserWorkspaces(userId: string) {
   const result = await query<WorkspaceMembership>(
     `SELECT w.id,w.name,w.kind,w.owner_id,wm.role,
       (SELECT count(*)::int FROM workspace_members x WHERE x.workspace_id=w.id) AS member_count
@@ -87,6 +87,15 @@ export async function listUserWorkspaces(userId: string) {
     [userId]
   );
   return result.rows;
+}
+
+export async function listUserWorkspaces(userId: string) {
+  let rows = await fetchUserWorkspaces(userId);
+  if (!rows.some((workspace) => workspace.kind === "PERSONAL" && workspace.owner_id === userId)) {
+    await ensurePersonalWorkspace({ id: userId });
+    rows = await fetchUserWorkspaces(userId);
+  }
+  return rows;
 }
 
 export async function getWorkspaceMembership(userId: string, workspaceId: string) {
