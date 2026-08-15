@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   icons: { icon: "/navopass.svg" },
 };
 
-export const viewport: Viewport = { themeColor: "#0b1324", colorScheme: "light dark" };
+export const viewport: Viewport = { themeColor: "#0b6e9d", colorScheme: "light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="de"><body>{children}</body></html>;
