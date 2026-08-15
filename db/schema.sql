@@ -80,7 +80,26 @@ ALTER TABLE assets ADD COLUMN IF NOT EXISTS next_service_date date;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS service_interval_months integer NOT NULL DEFAULT 12;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS favorite boolean NOT NULL DEFAULT false;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS archived_at timestamptz;
-UPDATE assets a SET owner_id=w.owner_id FROM workspaces w WHERE a.workspace_id=w.id AND a.owner_id<>w.owner_id;
+
+INSERT INTO workspaces (name,kind,owner_id)
+SELECT 'Persönlich','PERSONAL',u.id FROM users u
+WHERE NOT EXISTS (
+  SELECT 1 FROM workspaces w WHERE w.owner_id=u.id AND w.kind='PERSONAL'
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO workspace_members (workspace_id,user_id,role)
+SELECT w.id,w.owner_id,'OWNER' FROM workspaces w WHERE w.kind='PERSONAL'
+ON CONFLICT (workspace_id,user_id) DO UPDATE SET role='OWNER';
+
+UPDATE assets a SET workspace_id=w.id
+FROM workspaces w
+WHERE a.workspace_id IS NULL AND w.kind='PERSONAL' AND w.owner_id=a.owner_id;
+
+UPDATE assets a SET owner_id=w.owner_id
+FROM workspaces w
+WHERE a.workspace_id=w.id AND a.owner_id<>w.owner_id;
+
 CREATE INDEX IF NOT EXISTS assets_owner_id_idx ON assets(owner_id);
 CREATE INDEX IF NOT EXISTS assets_workspace_idx ON assets(workspace_id);
 CREATE INDEX IF NOT EXISTS assets_public_id_idx ON assets(public_id);
