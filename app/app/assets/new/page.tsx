@@ -6,13 +6,13 @@ import { canEdit, listUserWorkspaces } from "@/lib/workspaces";
 
 const categories = ["Heizung & Klima", "Haushalt", "Fahrzeug", "Fahrrad", "Werkzeug", "Elektronik", "Boot", "Maschine", "Immobilie", "Sonstiges"];
 
-export default async function NewAssetPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function NewAssetPage({ searchParams }: { searchParams: Promise<{ error?: string; upgrade?: string }> }) {
   const user = await requireUser();
-  const { error } = await searchParams;
+  const { error, upgrade } = await searchParams;
   const workspaces = (await listUserWorkspaces(user.id)).filter((workspace) => canEdit(workspace.role));
 
   return (
-    <main className="app-page"><div className="container"><AppHeader name={user.name} /><div className="page-back"><Link href="/app">← Meine Pässe</Link></div><section className="editor-card"><div className="section-heading left"><span className="eyebrow">Neuer Objektpass</span><h1>Was möchtest du dokumentieren?</h1><p>Starte mit den wichtigsten Daten. Fotos, Dokumente und Historieneinträge kannst du direkt danach ergänzen.</p></div>{error && <p className="form-error">{error}</p>}<form action={createAssetAction} className="form-grid">
+    <main className="app-page"><div className="container"><AppHeader name={user.name} /><div className="page-back"><Link href="/app">← Meine Pässe</Link></div><section className="editor-card"><div className="section-heading left"><span className="eyebrow">Neuer Objektpass</span><h1>Was möchtest du dokumentieren?</h1><p>Starte mit den wichtigsten Daten. Fotos, Dokumente und Historieneinträge kannst du direkt danach ergänzen.</p></div>{error && <p className="form-error">{error}</p>}{upgrade && <div className="upgrade-banner"><span><b>Mehr Platz benötigt?</b> Deine bestehenden Pässe bleiben vollständig erhalten.</span><Link href="/preise">Tarife ansehen →</Link></div>}<form action={createAssetAction} className="form-grid">
       <label className="span-2">Name des Objekts<input name="name" placeholder="z. B. Wärmepumpe Keller" maxLength={160} required /></label>
       <label>Bereich<select name="workspaceId" defaultValue={workspaces.find((workspace) => workspace.kind === "PERSONAL")?.id}>{workspaces.map((workspace) => <option value={workspace.id} key={workspace.id}>{workspace.name} · {workspace.kind === "PERSONAL" ? "Persönlich" : workspace.kind === "HOUSEHOLD" ? "Haushalt" : "Team"}</option>)}</select></label>
       <label>Kategorie<select name="category" defaultValue="Heizung & Klima">{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
