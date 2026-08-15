@@ -1,62 +1,62 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
+import { PLAN_CONFIG, formatEuro, formatStorage, type Plan } from "@/lib/plans";
 import styles from "@/app/public-pages.module.css";
 
 export const metadata: Metadata = {
   title: "Preise",
-  description: "Aktuelle Preise und geplante Tarife von NavoPass.",
+  description: "NavoPass Preise für Free, Plus, Family und Business.",
 };
 
-const currentFeatures = [
-  "Digitale Objektpässe anlegen und verwalten",
-  "Fotos und PDF-Dokumente direkt am Pass speichern",
-  "Wartungen, Reparaturen und Garantiefristen dokumentieren",
-  "QR-Code und Freigabelink für ausgewählte Passdaten",
-  "Kalenderexport für Wartungs- und Garantiefristen",
-  "Persönliche, Haushalts- und Team-Bereiche mit Rollen",
-];
+const order: Plan[] = ["FREE", "PLUS", "FAMILY", "BUSINESS"];
+
+function features(plan: Plan) {
+  const item = PLAN_CONFIG[plan];
+  const shared = item.maxSharedWorkspaces === null ? "Unbegrenzt gemeinsame Bereiche" : item.maxSharedWorkspaces > 0 ? `${item.maxSharedWorkspaces} gemeinsame Bereiche` : "Persönlicher Bereich";
+  return [
+    `${item.maxAssets.toLocaleString("de-DE")} Pässe`,
+    `${formatStorage(item.maxStorageBytes)} Speicher`,
+    `${item.maxSeats} ${item.maxSeats === 1 ? "Nutzer" : "Nutzer"}`,
+    shared,
+    "QR-Code & Freigabelinks",
+    "Wartungen, Historie & Kalenderexport",
+  ];
+}
 
 export default function PricingPage() {
   return (
     <PublicShell>
       <main className={styles.main}>
         <section className={styles.hero}>
-          <span className={styles.eyebrow}>Preise</span>
-          <h1>Jetzt kostenlos starten.</h1>
-          <p>NavoPass befindet sich in der Startphase. Die aktuelle Nutzung kostet 0 € und erfordert kein Zahlungsmittel. Ein späterer kostenpflichtiger Tarif beginnt niemals automatisch ohne deine ausdrückliche Bestellung.</p>
+          <span className={styles.eyebrow}>Preise & Limits</span>
+          <h1>Einfach starten. Mitwachsen, wenn du mehr brauchst.</h1>
+          <p>Grundfunktionen bleiben in jedem Tarif erhalten. Bezahlt wird für mehr Pässe, Speicher und Zusammenarbeit – nicht dafür, grundlegende Funktionen künstlich freizuschalten.</p>
         </section>
 
         <section className={styles.pricingGrid} aria-label="NavoPass Tarife">
-          <article className={`${styles.priceCard} ${styles.featured}`}>
-            <span className={styles.badge}>Aktuell verfügbar</span>
-            <h2>Startphase</h2>
-            <div className={styles.price}><strong>0 €</strong><small>/ Monat</small></div>
-            <p>Für private Nutzer, Haushalte und Teams während der aktuellen Einführungsphase.</p>
-            <ul className={styles.features}>{currentFeatures.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-            <Link className={styles.priceAction} href="/register">Kostenlos registrieren</Link>
-          </article>
-
-          <article className={styles.priceCard}>
-            <span className={styles.badge}>Geplant</span>
-            <h2>Pro</h2>
-            <div className={styles.price}><strong>—</strong><small>Preis noch nicht festgelegt</small></div>
-            <p>Ein späterer Pro-Tarif kann zusätzliche Komfort- und Verwaltungsfunktionen erhalten.</p>
-            <ul className={styles.features}><li>Preis wird vor Einführung veröffentlicht</li><li>Leistungsumfang wird transparent ausgewiesen</li><li>Kein automatischer Wechsel aus der Startphase</li></ul>
-            <span className={`${styles.priceAction} ${styles.muted}`}>Noch nicht buchbar</span>
-          </article>
-
-          <article className={styles.priceCard}>
-            <span className={styles.badge}>Geplant</span>
-            <h2>Business</h2>
-            <div className={styles.price}><strong>—</strong><small>Preis noch nicht festgelegt</small></div>
-            <p>Für Unternehmen mit weitergehenden Anforderungen an Teams, Verwaltung und Betriebsmittel.</p>
-            <ul className={styles.features}><li>Separate Business-Funktionen erst nach Veröffentlichung</li><li>Klare Preis- und Laufzeitangaben vor Bestellung</li><li>Keine kostenpflichtige Aktivierung ohne Zustimmung</li></ul>
-            <span className={`${styles.priceAction} ${styles.muted}`}>Noch nicht buchbar</span>
-          </article>
+          {order.map((plan) => {
+            const item = PLAN_CONFIG[plan];
+            const monthly = formatEuro(item.monthlyCents);
+            const yearly = formatEuro(item.yearlyCents);
+            const savings = Math.max(0, item.monthlyCents * 12 - item.yearlyCents);
+            const featured = plan === "FAMILY";
+            return (
+              <article className={`${styles.priceCard} ${featured ? styles.featured : ""}`} key={plan}>
+                <span className={styles.badge}>{plan === "FREE" ? "Kostenlos" : featured ? "Empfohlen" : plan === "BUSINESS" ? "Für Teams" : "Privat"}</span>
+                <h2>{item.name}</h2>
+                <div className={styles.price}><strong>{monthly}</strong><small>/ Monat</small></div>
+                {item.yearlyCents > 0 ? <p className={styles.annual}>{yearly} / Jahr · spart {formatEuro(savings)}</p> : <p className={styles.annual}>Dauerhaft ohne Grundgebühr</p>}
+                <p>{item.description}</p>
+                <ul className={styles.features}>{features(plan).map((feature) => <li key={feature}>{feature}</li>)}</ul>
+                {plan === "FREE" ? <Link className={styles.priceAction} href="/register">Kostenlos starten</Link> : <span className={`${styles.priceAction} ${styles.muted}`}>Buchung folgt mit Zahlungsanbindung</span>}
+              </article>
+            );
+          })}
         </section>
 
-        <div className={styles.notice}><strong>Wichtig:</strong> Aktuell entstehen durch Registrierung und Nutzung von NavoPass keine Entgelte. Sollte Kamilunavo später kostenpflichtige Tarife anbieten, werden Preis, Leistungsumfang, Laufzeit, Kündigungsbedingungen und gegebenenfalls Widerrufsinformationen vor einer kostenpflichtigen Bestellung angezeigt.</div>
+        <div className={styles.notice}><strong>Wichtig:</strong> Die Tarife und technischen Limits sind bereits festgelegt. Die kostenpflichtige Buchung wird separat angebunden. Bis ein Checkout aktiv ist, entsteht durch das reine Anzeigen eines Tarifs keine Zahlungspflicht. Ein Tarifwechsel in ein kostenpflichtiges Paket erfolgt niemals automatisch.</div>
+        <div className="business-contact">Mehr als 1.000 Pässe oder 10 Nutzer benötigt? <Link href="/kontakt">Individuelles Angebot anfragen →</Link></div>
       </main>
     </PublicShell>
   );
