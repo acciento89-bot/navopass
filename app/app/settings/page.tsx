@@ -21,8 +21,8 @@ function percent(used: number, max: number | null) {
 function tone(used: number, max: number | null) {
   if (max === null) return "";
   if (max === 0) return used > 0 ? "over" : "";
-  if (used >= max) return "over";
-  if (used / max >= 0.8) return "warning";
+  if (used > max) return "over";
+  if (used >= max || used / max >= 0.8) return "warning";
   return "";
 }
 
