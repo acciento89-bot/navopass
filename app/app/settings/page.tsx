@@ -20,12 +20,13 @@ function percent(used: number, max: number | null) {
 
 function tone(used: number, max: number | null) {
   if (max === null) return "";
+  if (max === 0) return used > 0 ? "over" : "";
   if (used >= max) return "over";
-  if (used / Math.max(1, max) >= 0.8) return "warning";
+  if (used / max >= 0.8) return "warning";
   return "";
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ profileError?: string; profileSuccess?: string; passwordError?: string; passwordSuccess?: string; deleteError?: string; reminderSuccess?: string; sessionsSuccess?: string }> }) {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ profileError?: string; profileSuccess?: string; passwordError?: string; passwordSuccess?: string; deleteError?: string; reminderSuccess?: string; sessionsSuccess?: string; limit?: string }> }) {
   const user = await requireUser();
   const params = await searchParams;
   const [sessionCount, planState, reservedSeats] = await Promise.all([
@@ -40,6 +41,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <main className="app-page"><div className="container"><AppHeader name={user.name} /><div className="page-back"><Link href="/app">← Meine Pässe</Link></div>
       <section className="settings-head"><span className="eyebrow">Konto & Datenschutz</span><h1>Einstellungen</h1><p>Tarif, Nutzung, Profil, Erinnerungen, Sicherheit, Datenexport und dein NavoPass-Konto an einem Ort.</p></section>
+      {params.limit && <div className="upgrade-banner"><span><b>Tariflimit erreicht.</b> {params.limit}</span><Link href="/preise">Tarife ansehen →</Link></div>}
       <section className="settings-grid">
         <article className="panel settings-panel plan-panel">
           <div className="plan-top"><div><span className="eyebrow">Tarif & Nutzung</span><h2>{definition.name}</h2><p>{definition.description}</p><p className="plan-price"><b>{formatEuro(definition.monthlyCents)}</b> / Monat{definition.yearlyCents > 0 ? ` · ${formatEuro(definition.yearlyCents)} / Jahr` : ""}</p></div><span className="plan-badge">Aktueller Tarif</span></div>
