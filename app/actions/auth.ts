@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSession, destroySession, findUserByEmail, hashPassword, normalizeEmail, safeNext, verifyPassword } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { ensurePersonalWorkspace } from "@/lib/workspaces";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -29,6 +30,7 @@ export async function registerAction(formData: FormData) {
 
   const passwordHash = await hashPassword(password);
   const result = await query<{ id: string }>("INSERT INTO users (email,name,password_hash) VALUES ($1,$2,$3) RETURNING id", [email, name, passwordHash]);
+  await ensurePersonalWorkspace({ id: result.rows[0].id, name });
   await createSession(result.rows[0].id);
   redirect(next);
 }
