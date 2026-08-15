@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./service-extra.css";
 import "./collaboration.css";
+import "./finish.css";
 
 export const metadata: Metadata = {
   title: { default: "NavoPass", template: "%s · NavoPass" },
