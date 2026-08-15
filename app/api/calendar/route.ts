@@ -9,6 +9,18 @@ function icsText(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
+// RFC 5545 requires long content lines to be folded. Keeping chunks small also
+// keeps UTF-8 lines below Apple's stricter parser limits when umlauts are used.
+function foldLine(line: string) {
+  const chars = Array.from(line);
+  if (chars.length <= 60) return line;
+  const chunks: string[] = [];
+  for (let index = 0; index < chars.length; index += 60) {
+    chunks.push(chars.slice(index, index + 60).join(""));
+  }
+  return chunks.join("\r\n ");
+}
+
 function stamp() {
   return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
@@ -32,7 +44,7 @@ function eventBlock(args: { uid: string; date: string; summary: string; descript
     "TRANSP:TRANSPARENT",
     "SEQUENCE:0",
     "END:VEVENT",
-  ].join("\r\n");
+  ].map(foldLine).join("\r\n");
 }
 
 export async function GET(request: Request) {
@@ -48,11 +60,10 @@ export async function GET(request: Request) {
     const details = [asset.manufacturer, asset.model, asset.location].filter(Boolean).join(" · ");
     const passUrl = `${appUrl}/app/assets/${asset.id}`;
 
-    const serviceDate = asset.next_service_date;
-    if (serviceDate) {
+    if (asset.next_service_date) {
       const block = eventBlock({
         uid: `service-${asset.id}@navopass.de`,
-        date: String(serviceDate),
+        date: asset.next_service_date,
         summary: `Wartung: ${asset.name}`,
         description: [details, `Wartung in NavoPass. Intervall: ${asset.service_interval_months || 12} Monate.`].filter(Boolean).join("\n"),
         url: passUrl,
@@ -61,11 +72,10 @@ export async function GET(request: Request) {
       if (block) events.push(block);
     }
 
-    const warrantyDate = asset.warranty_until;
-    if (warrantyDate) {
+    if (asset.warranty_until) {
       const block = eventBlock({
         uid: `warranty-${asset.id}@navopass.de`,
-        date: String(warrantyDate),
+        date: asset.warranty_until,
         summary: `Garantie endet: ${asset.name}`,
         description: [details, "Garantiefrist aus deinem NavoPass Objektpass."].filter(Boolean).join("\n"),
         url: passUrl,
@@ -75,7 +85,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const calendar = [
+  const header = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//Kamilunavo//NavoPass 0.4.1//DE",
@@ -83,10 +93,9 @@ export async function GET(request: Request) {
     "METHOD:PUBLISH",
     "X-WR-CALNAME:NavoPass Termine",
     "X-WR-TIMEZONE:Europe/Berlin",
-    ...events,
-    "END:VCALENDAR",
-    "",
-  ].join("\r\n");
+  ].map(foldLine);
+
+  const calendar = [...header, ...events, "END:VCALENDAR", ""].join("\r\n");
 
   return new Response(calendar, {
     status: 200,
