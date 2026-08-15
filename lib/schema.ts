@@ -28,6 +28,7 @@ export const SCHEMA_STATEMENTS = [
     purchase_date date,
     warranty_until date,
     next_service_date date,
+    service_interval_months integer NOT NULL DEFAULT 12,
     location text,
     notes text,
     visibility text NOT NULL DEFAULT 'LINK' CHECK (visibility IN ('PRIVATE','LINK','PUBLIC')),
@@ -37,11 +38,13 @@ export const SCHEMA_STATEMENTS = [
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
   `ALTER TABLE assets ADD COLUMN IF NOT EXISTS next_service_date date`,
+  `ALTER TABLE assets ADD COLUMN IF NOT EXISTS service_interval_months integer NOT NULL DEFAULT 12`,
   `ALTER TABLE assets ADD COLUMN IF NOT EXISTS favorite boolean NOT NULL DEFAULT false`,
   `ALTER TABLE assets ADD COLUMN IF NOT EXISTS archived_at timestamptz`,
   `CREATE INDEX IF NOT EXISTS assets_owner_id_idx ON assets(owner_id)`,
   `CREATE INDEX IF NOT EXISTS assets_public_id_idx ON assets(public_id)`,
   `CREATE INDEX IF NOT EXISTS assets_owner_archived_idx ON assets(owner_id, archived_at)`,
+  `CREATE INDEX IF NOT EXISTS assets_next_service_idx ON assets(owner_id, next_service_date)`,
   `CREATE TABLE IF NOT EXISTS asset_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
