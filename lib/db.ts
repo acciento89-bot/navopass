@@ -1,4 +1,4 @@
-import { Pool, types, type PoolConfig, type QueryResultRow } from "pg";
+import { Pool, types, type PoolClient, type PoolConfig, type QueryResultRow } from "pg";
 import { SCHEMA_STATEMENTS } from "@/lib/schema";
 
 // PostgreSQL DATE (OID 1082) is a calendar day, not a timestamp.
@@ -72,4 +72,20 @@ async function ensureSchema() {
 export async function query<T extends QueryResultRow>(text: string, values: unknown[] = []) {
   await ensureSchema();
   return pool.query<T>(text, values);
+}
+
+export async function transaction<T>(run: (client: PoolClient) => Promise<T>) {
+  await ensureSchema();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await run(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
