@@ -13,6 +13,7 @@ export type Asset = {
   purchase_date: string | null;
   warranty_until: string | null;
   next_service_date: string | null;
+  service_interval_months: number;
   location: string | null;
   notes: string | null;
   visibility: "PRIVATE" | "LINK" | "PUBLIC";
@@ -39,6 +40,16 @@ export type AssetDocument = {
   url: string;
   kind: string;
   is_public: boolean;
+};
+
+export type ActivityItem = {
+  id: string;
+  activity_type: "EVENT" | "DOCUMENT" | "ASSET";
+  happened_at: string;
+  title: string;
+  detail: string | null;
+  asset_id: string;
+  asset_name: string;
 };
 
 export function newPublicId() {
@@ -79,6 +90,56 @@ export async function getDocuments(assetId: string, publicOnly = false) {
     ? "SELECT * FROM asset_documents WHERE asset_id=$1 AND is_public=true ORDER BY created_at DESC"
     : "SELECT * FROM asset_documents WHERE asset_id=$1 ORDER BY created_at DESC";
   const result = await query<AssetDocument>(sql, [assetId]);
+  return result.rows;
+}
+
+export async function listRecentActivity(ownerId: string, limit = 80) {
+  const safeLimit = Math.max(1, Math.min(limit, 200));
+  const result = await query<ActivityItem>(
+    `SELECT * FROM (
+      SELECT
+        e.id,
+        'EVENT'::text AS activity_type,
+        e.created_at AS happened_at,
+        e.title,
+        COALESCE(e.provider, e.event_type) AS detail,
+        a.id AS asset_id,
+        a.name AS asset_name
+      FROM asset_events e
+      JOIN assets a ON a.id=e.asset_id
+      WHERE a.owner_id=$1
+
+      UNION ALL
+
+      SELECT
+        d.id,
+        'DOCUMENT'::text AS activity_type,
+        d.created_at AS happened_at,
+        d.title,
+        d.kind AS detail,
+        a.id AS asset_id,
+        a.name AS asset_name
+      FROM asset_documents d
+      JOIN assets a ON a.id=d.asset_id
+      WHERE a.owner_id=$1
+
+      UNION ALL
+
+      SELECT
+        a.id,
+        'ASSET'::text AS activity_type,
+        a.updated_at AS happened_at,
+        a.name AS title,
+        CASE WHEN a.archived_at IS NULL THEN 'Pass aktualisiert' ELSE 'Pass archiviert' END AS detail,
+        a.id AS asset_id,
+        a.name AS asset_name
+      FROM assets a
+      WHERE a.owner_id=$1
+    ) activity
+    ORDER BY happened_at DESC
+    LIMIT $2`,
+    [ownerId, safeLimit]
+  );
   return result.rows;
 }
 
