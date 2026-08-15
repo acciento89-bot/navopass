@@ -30,13 +30,14 @@ export async function GET(request: Request) {
     const passUrl = `${appUrl}/app/assets/${asset.id}`;
 
     if (asset.next_service_date) {
+      const description = [details, `Wartung in NavoPass. Intervall: ${asset.service_interval_months || 12} Monate.`].filter(Boolean).join("\n");
       events.push([
         "BEGIN:VEVENT",
         `UID:service-${asset.id}@navopass.de`,
         `DTSTAMP:${now}`,
         `DTSTART;VALUE=DATE:${icsDate(asset.next_service_date)}`,
         `SUMMARY:${icsText(`Wartung: ${asset.name}`)}`,
-        `DESCRIPTION:${icsText(`${details ? `${details}\\n` : ""}Wartung in NavoPass. Intervall: ${asset.service_interval_months || 12} Monate.`)}`,
+        `DESCRIPTION:${icsText(description)}`,
         `URL:${passUrl}`,
         "STATUS:CONFIRMED",
         "END:VEVENT",
@@ -44,13 +45,14 @@ export async function GET(request: Request) {
     }
 
     if (asset.warranty_until) {
+      const description = [details, "Garantiefrist aus deinem NavoPass Objektpass."].filter(Boolean).join("\n");
       events.push([
         "BEGIN:VEVENT",
         `UID:warranty-${asset.id}@navopass.de`,
         `DTSTAMP:${now}`,
         `DTSTART;VALUE=DATE:${icsDate(asset.warranty_until)}`,
         `SUMMARY:${icsText(`Garantie endet: ${asset.name}`)}`,
-        `DESCRIPTION:${icsText(`${details ? `${details}\\n` : ""}Garantiefrist aus deinem NavoPass Objektpass.`)}`,
+        `DESCRIPTION:${icsText(description)}`,
         `URL:${passUrl}`,
         "STATUS:CONFIRMED",
         "END:VEVENT",
