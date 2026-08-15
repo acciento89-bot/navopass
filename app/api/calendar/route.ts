@@ -9,15 +9,19 @@ function icsText(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
-// RFC 5545 requires long content lines to be folded. Keeping chunks small also
-// keeps UTF-8 lines below Apple's stricter parser limits when umlauts are used.
 function foldLine(line: string) {
-  const chars = Array.from(line);
-  if (chars.length <= 60) return line;
+  if (Buffer.byteLength(line, "utf8") <= 70) return line;
   const chunks: string[] = [];
-  for (let index = 0; index < chars.length; index += 60) {
-    chunks.push(chars.slice(index, index + 60).join(""));
+  let current = "";
+  for (const char of line) {
+    if (current && Buffer.byteLength(current + char, "utf8") > 70) {
+      chunks.push(current);
+      current = char;
+    } else {
+      current += char;
+    }
   }
+  if (current) chunks.push(current);
   return chunks.join("\r\n ");
 }
 
