@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { normalizeEmail, requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { canCreateSharedWorkspace, canReserveSeat } from "@/lib/plans";
 import {
   canManage,
   createWorkspaceInvite,
@@ -26,12 +27,18 @@ export async function createWorkspaceAction(formData: FormData) {
   const kind = text(formData, "kind", 20) === "TEAM" ? "TEAM" : "HOUSEHOLD";
   if (name.length < 2) redirect("/app/team?error=Bitte%20einen%20Namen%20angeben");
 
+  const capacity = await canCreateSharedWorkspace(user.id);
+  if (!capacity.allowed) {
+    const limit = capacity.definition.maxSharedWorkspaces ?? "unbegrenzt";
+    redirect(`/app/team?error=${encodeURIComponent(`${capacity.definition.name} erlaubt ${limit} gemeinsame Bereiche. Für Haushalte oder Teams bitte Tarif upgraden.`)}&upgrade=1`);
+  }
+
   const result = await query<{ id: string }>(
     "INSERT INTO workspaces (name,kind,owner_id) VALUES ($1,$2,$3) RETURNING id",
     [name, kind, user.id]
   );
   await query("INSERT INTO workspace_members (workspace_id,user_id,role) VALUES ($1,$2,'OWNER')", [result.rows[0].id, user.id]);
-  revalidatePath("/app/team");
+  revalidatePath("/app/team"); revalidatePath("/app/settings");
   redirect(`/app/team?workspace=${result.rows[0].id}`);
 }
 
@@ -62,8 +69,13 @@ export async function inviteMemberAction(formData: FormData) {
     redirect(`/app/team?workspace=${workspaceId}&error=Diese%20Person%20ist%20bereits%20Mitglied`);
   }
 
+  const seatCapacity = await canReserveSeat(membership.owner_id, email);
+  if (!seatCapacity.allowed) {
+    redirect(`/app/team?workspace=${workspaceId}&error=${encodeURIComponent(`${seatCapacity.definition.name} erlaubt insgesamt ${seatCapacity.definition.maxSeats} Nutzer. Für weitere Personen bitte Tarif upgraden.`)}&upgrade=1`);
+  }
+
   const token = await createWorkspaceInvite(workspaceId, email, role, user.id);
-  revalidatePath("/app/team"); revalidatePath("/app/notifications");
+  revalidatePath("/app/team"); revalidatePath("/app/notifications"); revalidatePath("/app/settings");
   redirect(`/app/team?workspace=${workspaceId}&invite=${encodeURIComponent(token)}`);
 }
 
@@ -77,13 +89,19 @@ export async function acceptWorkspaceInviteAction(formData: FormData) {
     redirect(`/invite/${encodeURIComponent(token)}?error=Diese%20Einladung%20ist%20fuer%20eine%20andere%20E-Mail-Adresse`);
   }
 
+  const workspace = await query<{ owner_id: string }>("SELECT owner_id FROM workspaces WHERE id=$1 LIMIT 1", [invite.workspace_id]);
+  const ownerId = workspace.rows[0]?.owner_id;
+  if (!ownerId) redirect(`/invite/${encodeURIComponent(token)}?error=Bereich%20nicht%20mehr%20verfuegbar`);
+  const seatCapacity = await canReserveSeat(ownerId, invite.email);
+  if (!seatCapacity.allowed) redirect(`/invite/${encodeURIComponent(token)}?error=Das%20Nutzerlimit%20dieses%20Bereichs%20ist%20erreicht`);
+
   await query(
     `INSERT INTO workspace_members (workspace_id,user_id,role) VALUES ($1,$2,$3)
      ON CONFLICT (workspace_id,user_id) DO NOTHING`,
     [invite.workspace_id, user.id, invite.role]
   );
   await query("UPDATE workspace_invites SET accepted_at=now() WHERE id=$1", [invite.id]);
-  revalidatePath("/app"); revalidatePath("/app/team"); revalidatePath("/app/notifications");
+  revalidatePath("/app"); revalidatePath("/app/team"); revalidatePath("/app/notifications"); revalidatePath("/app/settings");
   redirect(`/app/team?workspace=${invite.workspace_id}&joined=1`);
 }
 
@@ -113,7 +131,7 @@ export async function removeWorkspaceMemberAction(formData: FormData) {
   if (!target || target.role === "OWNER") return;
   if (membership.role === "ADMIN" && target.role === "ADMIN") return;
   await query("DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2", [workspaceId, memberId]);
-  revalidatePath("/app/team"); revalidatePath("/app");
+  revalidatePath("/app/team"); revalidatePath("/app"); revalidatePath("/app/settings");
 }
 
 export async function leaveWorkspaceAction(formData: FormData) {
@@ -123,7 +141,7 @@ export async function leaveWorkspaceAction(formData: FormData) {
   const membership = await getWorkspaceMembership(user.id, workspaceId);
   if (!membership || membership.role === "OWNER" || membership.kind === "PERSONAL") return;
   await query("DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2", [workspaceId, user.id]);
-  revalidatePath("/app"); revalidatePath("/app/team");
+  revalidatePath("/app"); revalidatePath("/app/team"); revalidatePath("/app/settings");
   redirect("/app/team");
 }
 
@@ -135,7 +153,7 @@ export async function cancelWorkspaceInviteAction(formData: FormData) {
   const membership = await getWorkspaceMembership(user.id, workspaceId);
   if (!membership || !canManage(membership.role)) return;
   await query("DELETE FROM workspace_invites WHERE id=$1 AND workspace_id=$2", [inviteId, workspaceId]);
-  revalidatePath("/app/team");
+  revalidatePath("/app/team"); revalidatePath("/app/settings");
 }
 
 export async function deleteWorkspaceAction(formData: FormData) {
@@ -147,6 +165,6 @@ export async function deleteWorkspaceAction(formData: FormData) {
   const personalId = await ensurePersonalWorkspace(user);
   await query("UPDATE assets SET workspace_id=$1,owner_id=$2,updated_at=now() WHERE workspace_id=$3", [personalId, user.id, workspaceId]);
   await query("DELETE FROM workspaces WHERE id=$1", [workspaceId]);
-  revalidatePath("/app"); revalidatePath("/app/team"); revalidatePath("/app/service");
+  revalidatePath("/app"); revalidatePath("/app/team"); revalidatePath("/app/service"); revalidatePath("/app/settings");
   redirect("/app/team");
 }
