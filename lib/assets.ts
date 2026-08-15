@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { query } from "@/lib/db";
-import { dateOnlyAsDate, type DateOnlyInput } from "@/lib/date";
+import { daysUntil, type DateOnlyInput } from "@/lib/date";
 import type { WorkspaceRole } from "@/lib/workspaces";
 
 export type Asset = { id:string; owner_id:string; workspace_id:string|null; workspace_name?:string|null; access_role?:WorkspaceRole|null; public_id:string; name:string; category:string; manufacturer:string|null; model:string|null; serial_number:string|null; purchase_date:string|null; warranty_until:string|null; next_service_date:string|null; service_interval_months:number; location:string|null; notes:string|null; visibility:"PRIVATE"|"LINK"|"PUBLIC"; favorite:boolean; archived_at:string|null; created_at:string; updated_at:string };
@@ -19,5 +19,5 @@ export async function listRecentActivity(userId:string,limit=80){const safeLimit
 export function roleCanEdit(asset:Asset,userId:string){if(asset.workspace_id)return asset.access_role==="OWNER"||asset.access_role==="ADMIN"||asset.access_role==="EDITOR";return asset.owner_id===userId;}
 export function roleCanManage(asset:Asset,userId:string){if(asset.workspace_id)return asset.access_role==="OWNER"||asset.access_role==="ADMIN";return asset.owner_id===userId;}
 export function roleCanTransfer(asset:Asset,userId:string){if(asset.workspace_id)return asset.access_role==="OWNER";return asset.owner_id===userId;}
-export function isDueSoon(value:DateOnlyInput,days=30){const parsed=dateOnlyAsDate(value);if(!parsed)return false;const due=parsed.getTime();const now=Date.now();return due>=now&&due<=now+days*24*60*60*1000;}
-export function isOverdue(value:DateOnlyInput){const parsed=dateOnlyAsDate(value);if(!parsed)return false;parsed.setHours(23,59,59,999);return parsed.getTime()<Date.now();}
+export function isDueSoon(value:DateOnlyInput,days=30){const remaining=daysUntil(value);return remaining!==null&&remaining>=0&&remaining<=days;}
+export function isOverdue(value:DateOnlyInput){const remaining=daysUntil(value);return remaining!==null&&remaining<0;}
