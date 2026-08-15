@@ -23,6 +23,14 @@ export function dateOnly(value: DateOnlyInput): string | null {
   return null;
 }
 
+function parts(value: DateOnlyInput) {
+  const normalized = dateOnly(value);
+  if (!normalized) return null;
+  const [year, month, day] = normalized.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return { normalized, year, month, day };
+}
+
 export function dateOnlyAsDate(value: DateOnlyInput): Date | null {
   const normalized = dateOnly(value);
   if (!normalized) return null;
@@ -36,16 +44,17 @@ export function dateOnlyCompact(value: DateOnlyInput): string | null {
 }
 
 export function addDaysDateOnly(value: DateOnlyInput, days: number): string | null {
-  const parsed = dateOnlyAsDate(value);
-  if (!parsed) return null;
-  parsed.setDate(parsed.getDate() + days);
-  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+  const source = parts(value);
+  if (!source) return null;
+  const shifted = new Date(Date.UTC(source.year, source.month - 1, source.day + days));
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
 }
 
 export function daysUntil(value: DateOnlyInput): number | null {
-  const target = dateOnlyAsDate(value);
+  const target = parts(value);
   if (!target) return null;
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+  const now = new Date();
+  const targetOrdinal = Date.UTC(target.year, target.month - 1, target.day) / 86_400_000;
+  const todayOrdinal = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86_400_000;
+  return Math.round(targetOrdinal - todayOrdinal);
 }
