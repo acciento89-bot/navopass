@@ -26,7 +26,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://navopass:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}@db:5432/navopass
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: navopass
+      DB_USER: navopass
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
       APP_URL: ${APP_URL:-https://navopass.de}
       UPLOAD_DIR: /app/uploads
       NODE_ENV: production
