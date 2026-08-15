@@ -4,6 +4,7 @@ import { useState } from "react";
 
 export function ShareActions({ url, title }: { url: string; title: string }) {
   const [copied, setCopied] = useState(false);
+  const qrDownload = `/api/qr?data=${encodeURIComponent(url)}&download=1`;
 
   async function copyLink() {
     await navigator.clipboard.writeText(url);
@@ -23,6 +24,7 @@ export function ShareActions({ url, title }: { url: string; title: string }) {
     <div className="share-actions">
       <button className="button small" type="button" onClick={share}>Teilen</button>
       <button className="button ghost small" type="button" onClick={copyLink}>{copied ? "Kopiert ✓" : "Link kopieren"}</button>
+      <a className="button ghost small" href={qrDownload}>QR herunterladen</a>
       <button className="button ghost small" type="button" onClick={() => window.print()}>Drucken</button>
     </div>
   );
