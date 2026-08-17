@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { createSession, destroySession, findUserByEmail, hashPassword, normalizeEmail, safeNext, verifyPassword } from "@/lib/auth";
 import { query, transaction } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/email-verification";
 import { brandedMail, isMailConfigured, sendMail } from "@/lib/mailer";
 import { ensurePersonalWorkspace } from "@/lib/workspaces";
 
@@ -53,8 +54,12 @@ export async function registerAction(formData: FormData) {
      VALUES ($1,$2,$3,now(),$4,now()) RETURNING id`,
     [email, name, passwordHash, TERMS_VERSION]
   );
-  await ensurePersonalWorkspace({ id: result.rows[0].id, name });
-  await createSession(result.rows[0].id);
+  const userId = result.rows[0].id;
+  await ensurePersonalWorkspace({ id: userId, name });
+  await createSession(userId);
+  await sendVerificationEmail({ id: userId, email, name, email_verified_at: null }).catch((error) => {
+    console.error("NavoPass registration verification email failed", error);
+  });
   redirect(next);
 }
 
