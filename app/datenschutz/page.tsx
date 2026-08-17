@@ -42,9 +42,10 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2>5. Anmeldung und technisch notwendige Cookies</h2>
+            <h2>5. Anmeldung, Passwort-Wiederherstellung und technisch notwendige Cookies</h2>
             <p>Für angemeldete Nutzer verwendet NavoPass das technisch notwendige Session-Cookie <code className={styles.legalCode}>navopass_session</code>. Es enthält ein zufälliges Sitzungstoken; serverseitig wird nur der Hash dieses Tokens gespeichert. Die Sitzung ist grundsätzlich auf 30 Tage begrenzt und kann durch Abmelden vorzeitig beendet werden.</p>
-            <p>Dieses Cookie ist erforderlich, damit der ausdrücklich gewünschte angemeldete Dienst bereitgestellt werden kann. Es wird nicht für Werbung oder Reichweitenmessung verwendet.</p>
+            <p>Für die Funktion „Passwort vergessen“ wird die eingegebene E-Mail-Adresse verarbeitet. Wenn ein passendes Konto besteht, erzeugt NavoPass einen zeitlich begrenzten, einmal verwendbaren Wiederherstellungslink. Server-seitig wird nur ein kryptographischer Hash des Wiederherstellungstokens gespeichert. Nach erfolgreicher Passwortänderung werden bestehende Sitzungen des Kontos beendet.</p>
+            <p>Session-Cookie und Passwort-Wiederherstellung sind erforderlich, um den ausdrücklich gewünschten Kontozugang und die Sicherheit des Benutzerkontos bereitzustellen. Sie werden nicht für Werbung oder Reichweitenmessung verwendet.</p>
           </section>
 
           <section>
@@ -62,6 +63,7 @@ export default function PrivacyPage() {
           <section>
             <h2>8. Haushalts- und Team-Bereiche</h2>
             <p>Für gemeinsame Bereiche werden insbesondere Bereichsname, Mitgliedschaften, Rollen und – bei Einladungen – die E-Mail-Adresse der eingeladenen Person verarbeitet. Mitglieder eines Bereichs können je nach Rolle auf die dort abgelegten Objektpässe zugreifen oder sie bearbeiten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.</p>
+            <p>Wenn der Einladende eine Einladung erstellt und der E-Mail-Versand eingerichtet ist, sendet NavoPass den Einladungslink an die angegebene Adresse. Die E-Mail enthält die für die Einladung notwendigen Angaben, insbesondere den Namen der einladenden Person, den Bereich, die vorgesehene Rolle und den zeitlich begrenzten Einladungslink.</p>
           </section>
 
           <section>
@@ -72,12 +74,12 @@ export default function PrivacyPage() {
           <section>
             <h2>10. Kontakt per E-Mail und Kontaktformular</h2>
             <p>Bei Kontaktaufnahme per E-Mail werden Absenderadresse, Nachrichteninhalt und freiwillig übermittelte Kontaktdaten verarbeitet, um die Anfrage zu beantworten. Bei vertraglichen oder vorvertraglichen Anliegen ist Art. 6 Abs. 1 lit. b DSGVO maßgeblich; im Übrigen Art. 6 Abs. 1 lit. f DSGVO.</p>
-            <p>Das auf navopass.de angebotene Kontaktformular übermittelt die Eingaben nicht an einen NavoPass-Formularserver. Es bereitet lokal im Browser eine E-Mail an support@kamilunavo.com vor. Eine Verarbeitung durch Kamilunavo beginnt erst, wenn der Nutzer diese E-Mail tatsächlich versendet.</p>
+            <p>Beim Kontaktformular werden Name, E-Mail-Adresse, gewähltes Thema und Nachrichteninhalt an den NavoPass-Server übertragen, dort zur Validierung der Anfrage verarbeitet und anschließend über die konfigurierte geschäftliche E-Mail-Infrastruktur an den NavoPass-Support weitergeleitet. Die Angaben werden zur Bearbeitung und Beantwortung der Anfrage verwendet.</p>
           </section>
 
           <section>
             <h2>11. Domain, DNS und geschäftliche E-Mail</h2>
-            <p>Für Domainverwaltung, DNS und geschäftliche E-Mail-Kommunikation können Dienste der One.com Group AB, Carlsgatan 3, 211 20 Malmö, Schweden, eingesetzt werden. Dabei können technisch notwendige Verbindungs-, Absender-, Empfänger- und Nachrichtendaten verarbeitet werden.</p>
+            <p>Für Domainverwaltung, DNS und geschäftliche E-Mail-Kommunikation können Dienste der One.com Group AB, Carlsgatan 3, 211 20 Malmö, Schweden, eingesetzt werden. Dabei können technisch notwendige Verbindungs-, Absender-, Empfänger- und Nachrichtendaten verarbeitet werden. Dies betrifft insbesondere Support-Nachrichten, Passwort-Wiederherstellungs-E-Mails und Einladungen, soweit diese über die konfigurierte geschäftliche E-Mail-Infrastruktur versendet werden.</p>
           </section>
 
           <section>
@@ -93,7 +95,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2>14. Speicherdauer</h2>
-            <p>Kontodaten und vom Nutzer gespeicherte NavoPass-Inhalte werden grundsätzlich für die Dauer des Benutzerkontos beziehungsweise bis zur Löschung der jeweiligen Inhalte gespeichert. Sitzungen laufen grundsätzlich nach 30 Tagen ab. Kontakt- und Geschäftskommunikation wird nur so lange aufbewahrt, wie dies zur Bearbeitung sowie aufgrund gesetzlicher Aufbewahrungs- oder Nachweispflichten erforderlich ist. Technische Protokolle werden gelöscht, sobald ihr Sicherheits- oder Betriebszweck entfällt, sofern keine längere gesetzliche Aufbewahrung erforderlich ist.</p>
+            <p>Kontodaten und vom Nutzer gespeicherte NavoPass-Inhalte werden grundsätzlich für die Dauer des Benutzerkontos beziehungsweise bis zur Löschung der jeweiligen Inhalte gespeichert. Sitzungen laufen grundsätzlich nach 30 Tagen ab. Nicht verwendete Passwort-Wiederherstellungstokens sind zeitlich begrenzt; verwendete oder abgelaufene Tokens erfüllen danach keinen Zugriffsweck mehr. Kontakt- und Geschäftskommunikation wird nur so lange aufbewahrt, wie dies zur Bearbeitung sowie aufgrund gesetzlicher Aufbewahrungs- oder Nachweispflichten erforderlich ist. Technische Protokolle werden gelöscht, sobald ihr Sicherheits- oder Betriebszweck entfällt, sofern keine längere gesetzliche Aufbewahrung erforderlich ist.</p>
           </section>
 
           <section>
@@ -118,7 +120,7 @@ export default function PrivacyPage() {
             <Link href="/preise">Preise</Link>
             <Link href="/kontakt">Kontakt</Link>
           </nav>
-          <p className={styles.meta}>Stand: 15. August 2026</p>
+          <p className={styles.meta}>Stand: 17. August 2026</p>
         </article>
       </main>
     </PublicShell>
