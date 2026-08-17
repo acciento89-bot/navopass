@@ -25,8 +25,10 @@ export const BILLING_SCHEMA_STATEMENTS = [
     withdrawal_acknowledged_at timestamptz NOT NULL,
     early_performance_requested_at timestamptz NOT NULL,
     stripe_checkout_session_id text,
+    contract_confirmation_sent_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE billing_consents ADD COLUMN IF NOT EXISTS contract_confirmation_sent_at timestamptz`,
   `CREATE UNIQUE INDEX IF NOT EXISTS billing_consents_checkout_unique_idx ON billing_consents(stripe_checkout_session_id) WHERE stripe_checkout_session_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS billing_consents_user_idx ON billing_consents(user_id, created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS cancellation_requests (
