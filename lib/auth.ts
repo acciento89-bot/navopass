@@ -9,7 +9,7 @@ const scrypt = promisify(scryptCallback);
 const COOKIE_NAME = "navopass_session";
 const SESSION_DAYS = 30;
 
-export type CurrentUser = { id: string; email: string; name: string; reminder_days?: number; plan?: Plan };
+export type CurrentUser = { id: string; email: string; name: string; reminder_days?: number; plan?: Plan; email_verified_at?: string | null };
 type UserRow = CurrentUser & { password_hash: string };
 
 export function normalizeEmail(email: string) {
@@ -86,7 +86,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!token) return null;
 
   const result = await query<CurrentUser>(
-    `SELECT u.id,u.email,u.name,u.reminder_days,u.plan
+    `SELECT u.id,u.email,u.name,u.reminder_days,u.plan,u.email_verified_at
      FROM sessions s JOIN users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.expires_at>now() LIMIT 1`,
     [tokenHash(token)]
@@ -102,7 +102,7 @@ export async function requireUser() {
 
 export async function findUserByEmail(email: string) {
   const result = await query<UserRow>(
-    "SELECT id,email,name,password_hash,reminder_days,plan FROM users WHERE email=$1 LIMIT 1",
+    "SELECT id,email,name,password_hash,reminder_days,plan,email_verified_at FROM users WHERE email=$1 LIMIT 1",
     [normalizeEmail(email)]
   );
   return result.rows[0] ?? null;
