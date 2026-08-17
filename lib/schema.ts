@@ -12,6 +12,7 @@ export const SCHEMA_STATEMENTS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version text`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_acknowledged_at timestamptz`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'FREE'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz`,
   `DO $$ BEGIN
      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_plan_check') THEN
        ALTER TABLE users ADD CONSTRAINT users_plan_check CHECK (plan IN ('FREE','PLUS','FAMILY','BUSINESS'));
@@ -36,6 +37,16 @@ export const SCHEMA_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx ON password_reset_tokens(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS password_reset_tokens_expiry_idx ON password_reset_tokens(expires_at) WHERE used_at IS NULL`,
+  `CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash text NOT NULL UNIQUE,
+    expires_at timestamptz NOT NULL,
+    used_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS email_verification_tokens_user_idx ON email_verification_tokens(user_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS email_verification_tokens_expiry_idx ON email_verification_tokens(expires_at) WHERE used_at IS NULL`,
   `CREATE TABLE IF NOT EXISTS workspaces (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
@@ -54,6 +65,20 @@ export const SCHEMA_STATEMENTS = [
     PRIMARY KEY (workspace_id,user_id)
   )`,
   `CREATE INDEX IF NOT EXISTS workspace_members_user_idx ON workspace_members(user_id)`,
+  `CREATE OR REPLACE FUNCTION navopass_require_verified_member() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.role <> 'OWNER' AND NOT EXISTS (
+        SELECT 1 FROM users u WHERE u.id=NEW.user_id AND u.email_verified_at IS NOT NULL
+      ) THEN
+        RAISE EXCEPTION 'EMAIL_NOT_VERIFIED' USING ERRCODE='check_violation';
+      END IF;
+      RETURN NEW;
+    END;
+   $$ LANGUAGE plpgsql`,
+  `DROP TRIGGER IF EXISTS workspace_members_require_verified ON workspace_members`,
+  `CREATE TRIGGER workspace_members_require_verified
+    BEFORE INSERT ON workspace_members
+    FOR EACH ROW EXECUTE FUNCTION navopass_require_verified_member()`,
   `CREATE TABLE IF NOT EXISTS workspace_invites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
