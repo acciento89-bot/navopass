@@ -1,0 +1,102 @@
+import Stripe from "stripe";
+import type { Plan } from "@/lib/plan-config";
+
+export type BillingInterval = "monthly" | "yearly";
+
+const secretKey = process.env.STRIPE_SECRET_KEY?.trim() || "";
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim() || "";
+
+const priceEnv: Record<Exclude<Plan, "FREE">, Record<BillingInterval, string>> = {
+  PLUS: {
+    monthly: process.env.STRIPE_PRICE_PLUS_MONTHLY?.trim() || "",
+    yearly: process.env.STRIPE_PRICE_PLUS_YEARLY?.trim() || "",
+  },
+  FAMILY: {
+    monthly: process.env.STRIPE_PRICE_FAMILY_MONTHLY?.trim() || "",
+    yearly: process.env.STRIPE_PRICE_FAMILY_YEARLY?.trim() || "",
+  },
+  BUSINESS: {
+    monthly: process.env.STRIPE_PRICE_BUSINESS_MONTHLY?.trim() || "",
+    yearly: process.env.STRIPE_PRICE_BUSINESS_YEARLY?.trim() || "",
+  },
+};
+
+let stripeClient: Stripe | null = null;
+
+export function getStripe() {
+  if (!secretKey) throw new Error("STRIPE_SECRET_KEY is not configured");
+  if (!stripeClient) stripeClient = new Stripe(secretKey);
+  return stripeClient;
+}
+
+export function getStripeWebhookSecret() {
+  if (!webhookSecret) throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
+  return webhookSecret;
+}
+
+export function appUrl() {
+  return (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+}
+
+export function priceIdFor(plan: Plan, interval: BillingInterval) {
+  if (plan === "FREE") return null;
+  return priceEnv[plan][interval] || null;
+}
+
+export function planForPriceId(priceId: string | null | undefined): Exclude<Plan, "FREE"> | null {
+  if (!priceId) return null;
+  for (const plan of ["PLUS", "FAMILY", "BUSINESS"] as const) {
+    if (priceEnv[plan].monthly === priceId || priceEnv[plan].yearly === priceId) return plan;
+  }
+  return null;
+}
+
+export function intervalForPriceId(priceId: string | null | undefined): BillingInterval | null {
+  if (!priceId) return null;
+  for (const plan of ["PLUS", "FAMILY", "BUSINESS"] as const) {
+    if (priceEnv[plan].monthly === priceId) return "monthly";
+    if (priceEnv[plan].yearly === priceId) return "yearly";
+  }
+  return null;
+}
+
+export function isStripeCheckoutConfigured(plan?: Plan, interval?: BillingInterval) {
+  if (!secretKey) return false;
+  if (plan && interval) return Boolean(priceIdFor(plan, interval));
+  return (["PLUS", "FAMILY", "BUSINESS"] as const).every(
+    (item) => Boolean(priceEnv[item].monthly && priceEnv[item].yearly)
+  );
+}
+
+export function isStripeWebhookConfigured() {
+  return Boolean(secretKey && webhookSecret);
+}
+
+export function isStripeBillingConfigured() {
+  return isStripeCheckoutConfigured() && isStripeWebhookConfigured();
+}
+
+export function stripeCustomerId(customer: Stripe.Subscription["customer"] | Stripe.Checkout.Session["customer"]) {
+  if (!customer) return null;
+  if (typeof customer === "string") return customer;
+  return customer.id;
+}
+
+export function stripeSubscriptionId(subscription: Stripe.Checkout.Session["subscription"]) {
+  if (!subscription) return null;
+  if (typeof subscription === "string") return subscription;
+  return subscription.id;
+}
+
+export function subscriptionPriceId(subscription: Stripe.Subscription) {
+  return subscription.items.data[0]?.price?.id || null;
+}
+
+export function subscriptionPeriodEnd(subscription: Stripe.Subscription) {
+  const item = subscription.items.data[0] as (Stripe.SubscriptionItem & { current_period_end?: number }) | undefined;
+  return item?.current_period_end ? new Date(item.current_period_end * 1000) : null;
+}
+
+export function subscriptionHasAccess(status: Stripe.Subscription.Status) {
+  return status === "active" || status === "trialing" || status === "past_due";
+}
