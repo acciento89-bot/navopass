@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createCheckoutAction } from "@/app/actions/billing";
 import { PublicShell } from "@/components/public-shell";
 import { getCurrentUser } from "@/lib/auth";
+import { getBillingState, shouldOpenPortal } from "@/lib/billing";
 import { PLAN_CONFIG, formatEuro, formatStorage, type Plan } from "@/lib/plan-config";
 import { isStripeCheckoutConfigured } from "@/lib/stripe";
 import styles from "@/app/public-pages.module.css";
@@ -29,6 +29,8 @@ function features(plan: Plan) {
 
 export default async function PricingPage({ searchParams }: { searchParams: Promise<{ billingError?: string; billingCancelled?: string }> }) {
   const [user, params] = await Promise.all([getCurrentUser(), searchParams]);
+  const billing = user ? await getBillingState(user.id) : null;
+  const hasManagedSubscription = Boolean(billing && shouldOpenPortal(billing));
 
   return (
     <PublicShell>
@@ -69,10 +71,15 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
                     <Link className={styles.priceAction} href="/login?next=%2Fpreise">Anmelden & buchen</Link>
                     <small>Monatlich oder jährlich nach der Anmeldung auswählen.</small>
                   </div>
+                ) : hasManagedSubscription ? (
+                  <div className={styles.billingActions}>
+                    <Link className={styles.priceAction} href="/app/settings">Abo & Tarif verwalten</Link>
+                    <small>Ein bestehendes Abo wird nicht durch ein zweites paralleles Checkout ersetzt.</small>
+                  </div>
                 ) : (
                   <div className={styles.billingActions}>
-                    {monthlyReady ? <form action={createCheckoutAction}><input type="hidden" name="plan" value={plan} /><input type="hidden" name="interval" value="monthly" /><button className={styles.priceAction} type="submit">{current ? "Abo verwalten" : `Monatlich · ${monthly}`}</button></form> : <span className={`${styles.priceAction} ${styles.muted}`}>Monatlich noch nicht konfiguriert</span>}
-                    {yearlyReady ? <form action={createCheckoutAction}><input type="hidden" name="plan" value={plan} /><input type="hidden" name="interval" value="yearly" /><button className={`${styles.priceAction} ${styles.yearlyAction}`} type="submit">{current ? "Tarif im Portal ändern" : `Jährlich · ${yearly}`}</button></form> : <span className={`${styles.priceAction} ${styles.muted}`}>Jährlich noch nicht konfiguriert</span>}
+                    {monthlyReady ? <Link className={styles.priceAction} href={`/app/billing/checkout?plan=${plan}&interval=monthly`}>Monatlich · {monthly}</Link> : <span className={`${styles.priceAction} ${styles.muted}`}>Monatlich noch nicht konfiguriert</span>}
+                    {yearlyReady ? <Link className={`${styles.priceAction} ${styles.yearlyAction}`} href={`/app/billing/checkout?plan=${plan}&interval=yearly`}>Jährlich · {yearly}</Link> : <span className={`${styles.priceAction} ${styles.muted}`}>Jährlich noch nicht konfiguriert</span>}
                   </div>
                 )}
               </article>
@@ -80,7 +87,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
           })}
         </section>
 
-        <div className={styles.notice}><strong>Abos:</strong> Kostenpflichtige Tarife werden sicher über Stripe gebucht. Tarifstatus und Zugriffsrechte werden serverseitig aus dem Stripe-Abonnement übernommen. Kündigung, Rechnungen und Zahlungsmittel kannst du anschließend über das Stripe-Kundenportal verwalten.</div>
+        <div className={styles.notice}><strong>Abos:</strong> Vor jeder neuen kostenpflichtigen Bestellung zeigt NavoPass Tarif, Abrechnungszeitraum, Kündigungs- und Widerrufsinformationen noch einmal an. Die Zahlungsdaten werden anschließend sicher über Stripe verarbeitet. Tarifstatus und Zugriffsrechte werden serverseitig aus dem bestätigten Stripe-Abonnement übernommen.</div>
         <div className="business-contact">Mehr als 1.000 Pässe oder 10 Nutzer benötigt? <Link href="/kontakt">Individuelles Angebot anfragen →</Link></div>
       </main>
     </PublicShell>
