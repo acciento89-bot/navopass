@@ -15,6 +15,15 @@ function text(formData: FormData, key: string, max = 500) {
   return String(formData.get(key) ?? "").trim().slice(0, max);
 }
 
+async function syncStripeCustomer(customerId: string | null | undefined, data: { email?: string; name?: string }) {
+  if (!customerId) return;
+  try {
+    await getStripe().customers.update(customerId, data);
+  } catch (error) {
+    console.error("NavoPass Stripe customer profile update failed", error);
+  }
+}
+
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser();
   const name = text(formData, "name", 160);
@@ -32,9 +41,7 @@ export async function updateProfileAction(formData: FormData) {
       return "failed" as const;
     });
     const billing = await getBillingState(user.id).catch(() => null);
-    if (billing?.stripe_customer_id) {
-      getStripe().customers.update(billing.stripe_customer_id, { email, name }).catch((error) => console.error("NavoPass Stripe customer profile update failed", error));
-    }
+    await syncStripeCustomer(billing?.stripe_customer_id, { email, name });
     const message = delivery === "sent"
       ? "Profil gespeichert. Bitte bestätige deine neue E-Mail-Adresse."
       : "Profil gespeichert. Die Bestätigungs-E-Mail konnte noch nicht gesendet werden.";
@@ -43,9 +50,7 @@ export async function updateProfileAction(formData: FormData) {
 
   await query("UPDATE users SET name=$1 WHERE id=$2", [name, user.id]);
   const billing = await getBillingState(user.id).catch(() => null);
-  if (billing?.stripe_customer_id) {
-    getStripe().customers.update(billing.stripe_customer_id, { name }).catch((error) => console.error("NavoPass Stripe customer name update failed", error));
-  }
+  await syncStripeCustomer(billing?.stripe_customer_id, { name });
   redirect("/app/settings?profileSuccess=Profil%20gespeichert");
 }
 
