@@ -16,6 +16,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
             <Link href="/datenschutz">Datenschutz</Link>
           </nav>
           <div className={styles.actions}>
+            <Link className={styles.cancelLink} href="/vertrag-kuendigen">Verträge hier kündigen</Link>
             <Link className={styles.login} href="/login">Anmelden</Link>
             <Link className={styles.cta} href="/register">Kostenlos starten</Link>
           </div>
@@ -27,6 +28,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           <div><Logo /><p>Der digitale Pass für deine Dinge.</p></div>
           <nav className={styles.footerLinks} aria-label="Rechtliches und Service">
             <Link href="/preise">Preise</Link>
+            <Link href="/vertrag-kuendigen">Verträge hier kündigen</Link>
             <Link href="/kontakt">Kontakt</Link>
             <Link href="/datenschutz">Datenschutz</Link>
             <Link href="/impressum">Impressum</Link>
