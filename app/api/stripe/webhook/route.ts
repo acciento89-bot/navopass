@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { applyStripeSubscriptionEvent } from "@/lib/billing";
+import { sendContractConfirmation } from "@/lib/contract-confirmation";
 import {
   getStripe,
   getStripeWebhookSecret,
@@ -38,6 +39,14 @@ async function currentSubscription(event: Stripe.Event) {
   return null;
 }
 
+async function confirmCheckoutContract(event: Stripe.Event) {
+  if (event.type !== "checkout.session.completed") return;
+  const session = event.data.object as Stripe.Checkout.Session;
+  const consentId = session.metadata?.navopass_consent_id;
+  if (!consentId) throw new Error("Checkout Session is missing navopass_consent_id");
+  await sendContractConfirmation(consentId, session.id);
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) return new Response("Missing Stripe-Signature", { status: 400 });
@@ -70,6 +79,11 @@ export async function POST(request: Request) {
       eventCreated: event.created,
       subscription,
     });
+
+    // Contract confirmation is deliberately retriable independently from event-state sync.
+    // If mail delivery fails, return 500. Stripe retries this event; the event sync is then
+    // a harmless duplicate while the confirmation is attempted again until marked sent.
+    await confirmCheckoutContract(event);
 
     return Response.json({ received: true, state: result.state });
   } catch (error) {
