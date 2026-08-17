@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { normalizeEmail, requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { brandedMail, isMailConfigured, sendMail } from "@/lib/mailer";
 import { canCreateSharedWorkspace, canReserveSeat } from "@/lib/plans";
 import {
   canManage,
@@ -20,6 +21,12 @@ function text(formData: FormData, key: string, max = 300) {
 }
 
 const inviteRoles = new Set(["ADMIN", "EDITOR", "VIEWER"]);
+
+function inviteRoleLabel(role: Exclude<WorkspaceRole, "OWNER">) {
+  if (role === "ADMIN") return "Admin";
+  if (role === "EDITOR") return "Bearbeiter";
+  return "Betrachter";
+}
 
 export async function createWorkspaceAction(formData: FormData) {
   const user = await requireUser();
@@ -75,8 +82,35 @@ export async function inviteMemberAction(formData: FormData) {
   }
 
   const token = await createWorkspaceInvite(workspaceId, email, role, user.id);
+  const appUrl = (process.env.APP_URL || "https://navopass.de").replace(/\/$/, "");
+  const inviteUrl = `${appUrl}/invite/${encodeURIComponent(token)}`;
+  let emailState = "manual";
+
+  if (isMailConfigured()) {
+    try {
+      const subject = `${user.name} lädt dich zu NavoPass ein`;
+      const intro = `${user.name} hat dich in den Bereich „${membership.name}“ eingeladen. Deine Rolle: ${inviteRoleLabel(role)}. Die Einladung ist 7 Tage gültig und nur für ${email} bestimmt.`;
+      await sendMail({
+        to: email,
+        subject,
+        text: `${intro}\n\nEinladung annehmen:\n${inviteUrl}\n\nFalls du keine Einladung erwartet hast, kannst du diese Nachricht ignorieren.`,
+        html: brandedMail({
+          title: "Einladung zu NavoPass",
+          intro,
+          actionLabel: "Einladung annehmen",
+          actionUrl: inviteUrl,
+          footer: "Wenn du diese Einladung nicht erwartet hast, musst du nichts tun.",
+        }),
+      });
+      emailState = "sent";
+    } catch (error) {
+      console.error("NavoPass workspace invite email failed", error);
+      emailState = "failed";
+    }
+  }
+
   revalidatePath("/app/team"); revalidatePath("/app/notifications"); revalidatePath("/app/settings");
-  redirect(`/app/team?workspace=${workspaceId}&invite=${encodeURIComponent(token)}`);
+  redirect(`/app/team?workspace=${workspaceId}&invite=${encodeURIComponent(token)}&emailState=${emailState}`);
 }
 
 export async function acceptWorkspaceInviteAction(formData: FormData) {
