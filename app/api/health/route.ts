@@ -15,6 +15,9 @@ export async function GET() {
       password_reset_tokens: boolean;
       email_verification_tokens: boolean;
       stripe_events: boolean;
+      billing_consents: boolean;
+      cancellation_requests: boolean;
+      withdrawal_requests: boolean;
       asset_workspace_column: boolean;
       reminder_column: boolean;
       terms_accepted_column: boolean;
@@ -34,6 +37,9 @@ export async function GET() {
         to_regclass('public.password_reset_tokens') IS NOT NULL AS password_reset_tokens,
         to_regclass('public.email_verification_tokens') IS NOT NULL AS email_verification_tokens,
         to_regclass('public.stripe_events') IS NOT NULL AS stripe_events,
+        to_regclass('public.billing_consents') IS NOT NULL AS billing_consents,
+        to_regclass('public.cancellation_requests') IS NOT NULL AS cancellation_requests,
+        to_regclass('public.withdrawal_requests') IS NOT NULL AS withdrawal_requests,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='assets' AND column_name='workspace_id') AS asset_workspace_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='reminder_days') AS reminder_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='terms_accepted_at') AS terms_accepted_column,
@@ -54,6 +60,9 @@ export async function GET() {
       schema.password_reset_tokens &&
       schema.email_verification_tokens &&
       schema.stripe_events &&
+      schema.billing_consents &&
+      schema.cancellation_requests &&
+      schema.withdrawal_requests &&
       schema.asset_workspace_column &&
       schema.reminder_column &&
       schema.terms_accepted_column &&
