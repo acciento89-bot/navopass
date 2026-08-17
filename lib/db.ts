@@ -1,9 +1,12 @@
 import { Pool, types, type PoolClient, type PoolConfig, type QueryResultRow } from "pg";
+import { BILLING_SCHEMA_STATEMENTS } from "@/lib/billing-schema";
 import { SCHEMA_STATEMENTS } from "@/lib/schema";
 
 // PostgreSQL DATE (OID 1082) is a calendar day, not a timestamp.
 // Keep it as YYYY-MM-DD to avoid timezone shifts and Date-object crashes.
 types.setTypeParser(1082, (value) => value);
+
+const ALL_SCHEMA_STATEMENTS = [...SCHEMA_STATEMENTS, ...BILLING_SCHEMA_STATEMENTS] as const;
 
 const globalForDb = globalThis as unknown as {
   navopassPool?: Pool;
@@ -48,13 +51,13 @@ async function ensureSchema() {
         locked = true;
         await client.query("BEGIN");
         try {
-          for (let index = 0; index < SCHEMA_STATEMENTS.length; index += 1) {
+          for (let index = 0; index < ALL_SCHEMA_STATEMENTS.length; index += 1) {
             try {
-              await client.query(SCHEMA_STATEMENTS[index]);
+              await client.query(ALL_SCHEMA_STATEMENTS[index]);
             } catch (error) {
               console.error("NavoPass schema migration failed", {
                 statement: index + 1,
-                preview: SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120),
+                preview: ALL_SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120),
                 error,
               });
               throw error;
