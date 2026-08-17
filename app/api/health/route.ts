@@ -1,10 +1,12 @@
 import { query } from "@/lib/db";
 import { isMailConfigured } from "@/lib/mailer";
+import { isStripeBillingConfigured } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const mailConfigured = isMailConfigured();
+  const billingConfigured = isStripeBillingConfigured();
   try {
     const result = await query<{
       workspaces: boolean;
@@ -12,6 +14,7 @@ export async function GET() {
       workspace_invites: boolean;
       password_reset_tokens: boolean;
       email_verification_tokens: boolean;
+      stripe_events: boolean;
       asset_workspace_column: boolean;
       reminder_column: boolean;
       terms_accepted_column: boolean;
@@ -19,6 +22,9 @@ export async function GET() {
       privacy_acknowledged_column: boolean;
       plan_column: boolean;
       email_verified_column: boolean;
+      stripe_customer_column: boolean;
+      stripe_subscription_column: boolean;
+      subscription_status_column: boolean;
       document_size_column: boolean;
     }>(`
       SELECT
@@ -27,6 +33,7 @@ export async function GET() {
         to_regclass('public.workspace_invites') IS NOT NULL AS workspace_invites,
         to_regclass('public.password_reset_tokens') IS NOT NULL AS password_reset_tokens,
         to_regclass('public.email_verification_tokens') IS NOT NULL AS email_verification_tokens,
+        to_regclass('public.stripe_events') IS NOT NULL AS stripe_events,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='assets' AND column_name='workspace_id') AS asset_workspace_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='reminder_days') AS reminder_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='terms_accepted_at') AS terms_accepted_column,
@@ -34,6 +41,9 @@ export async function GET() {
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='privacy_acknowledged_at') AS privacy_acknowledged_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='plan') AS plan_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='email_verified_at') AS email_verified_column,
+        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='stripe_customer_id') AS stripe_customer_column,
+        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='stripe_subscription_id') AS stripe_subscription_column,
+        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='subscription_status') AS subscription_status_column,
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='asset_documents' AND column_name='size_bytes') AS document_size_column
     `);
     const schema = result.rows[0];
@@ -43,6 +53,7 @@ export async function GET() {
       schema.workspace_invites &&
       schema.password_reset_tokens &&
       schema.email_verification_tokens &&
+      schema.stripe_events &&
       schema.asset_workspace_column &&
       schema.reminder_column &&
       schema.terms_accepted_column &&
@@ -50,11 +61,14 @@ export async function GET() {
       schema.privacy_acknowledged_column &&
       schema.plan_column &&
       schema.email_verified_column &&
+      schema.stripe_customer_column &&
+      schema.stripe_subscription_column &&
+      schema.subscription_status_column &&
       schema.document_size_column
     );
-    return Response.json({ ok, service: "navopass", version: "0.5.0", database: true, mailConfigured, schema }, { status: ok ? 200 : 503 });
+    return Response.json({ ok, service: "navopass", version: "0.5.0", database: true, mailConfigured, billingConfigured, schema }, { status: ok ? 200 : 503 });
   } catch (error) {
     console.error("NavoPass health check failed", error);
-    return Response.json({ ok: false, service: "navopass", version: "0.5.0", database: false, mailConfigured, schema: null }, { status: 503 });
+    return Response.json({ ok: false, service: "navopass", version: "0.5.0", database: false, mailConfigured, billingConfigured, schema: null }, { status: 503 });
   }
 }
