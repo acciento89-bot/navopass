@@ -34,4 +34,20 @@ export const BILLING_SCHEMA_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS cancellation_requests_email_idx ON cancellation_requests(lower(email), requested_at DESC)`,
   `CREATE INDEX IF NOT EXISTS cancellation_requests_status_idx ON cancellation_requests(processing_status, requested_at)`,
+  `CREATE TABLE IF NOT EXISTS withdrawal_requests (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+    consumer_name text NOT NULL,
+    email text NOT NULL,
+    contract_label text NOT NULL,
+    stripe_subscription_id text,
+    processing_status text NOT NULL DEFAULT 'RECEIVED',
+    processing_note text,
+    receipt_token_hash text NOT NULL UNIQUE,
+    requested_at timestamptz NOT NULL DEFAULT now(),
+    confirmation_sent_at timestamptz,
+    support_notified_at timestamptz
+  )`,
+  `CREATE INDEX IF NOT EXISTS withdrawal_requests_email_idx ON withdrawal_requests(lower(email), requested_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS withdrawal_requests_status_idx ON withdrawal_requests(processing_status, requested_at)`,
 ] as const;
