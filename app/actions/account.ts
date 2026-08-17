@@ -4,8 +4,10 @@ import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { redirect } from "next/navigation";
 import { createSession, destroyOtherSessions, destroySession, findUserByEmail, hashPassword, normalizeEmail, requireUser, verifyPassword } from "@/lib/auth";
+import { getBillingState } from "@/lib/billing";
 import { query } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email-verification";
+import { getStripe } from "@/lib/stripe";
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR || "/app/uploads";
 
@@ -29,6 +31,10 @@ export async function updateProfileAction(formData: FormData) {
       console.error("NavoPass changed-email verification failed", error);
       return "failed" as const;
     });
+    const billing = await getBillingState(user.id).catch(() => null);
+    if (billing?.stripe_customer_id) {
+      getStripe().customers.update(billing.stripe_customer_id, { email, name }).catch((error) => console.error("NavoPass Stripe customer profile update failed", error));
+    }
     const message = delivery === "sent"
       ? "Profil gespeichert. Bitte bestätige deine neue E-Mail-Adresse."
       : "Profil gespeichert. Die Bestätigungs-E-Mail konnte noch nicht gesendet werden.";
@@ -36,6 +42,10 @@ export async function updateProfileAction(formData: FormData) {
   }
 
   await query("UPDATE users SET name=$1 WHERE id=$2", [name, user.id]);
+  const billing = await getBillingState(user.id).catch(() => null);
+  if (billing?.stripe_customer_id) {
+    getStripe().customers.update(billing.stripe_customer_id, { name }).catch((error) => console.error("NavoPass Stripe customer name update failed", error));
+  }
   redirect("/app/settings?profileSuccess=Profil%20gespeichert");
 }
 
@@ -83,6 +93,16 @@ export async function deleteAccountAction(formData: FormData) {
     [user.id]
   );
   if ((ownedShared.rows[0]?.count ?? 0) > 0) redirect("/app/settings?deleteError=Bitte%20zuerst%20deine%20Haushalte%20oder%20Teams%20loeschen%20bzw.%20aufraeumen");
+
+  const billing = await getBillingState(user.id);
+  if (billing.stripe_subscription_id && billing.subscription_status !== "canceled" && billing.subscription_status !== "incomplete_expired") {
+    try {
+      await getStripe().subscriptions.cancel(billing.stripe_subscription_id);
+    } catch (error) {
+      console.error("NavoPass subscription cancellation before account deletion failed", error);
+      redirect("/app/settings?deleteError=Das%20laufende%20Abo%20konnte%20nicht%20beendet%20werden.%20Das%20Konto%20wurde%20nicht%20geloescht.%20Bitte%20versuche%20es%20erneut.");
+    }
+  }
 
   await query(
     `UPDATE assets a SET owner_id=w.owner_id
