@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getBillingState, getOrCreateStripeCustomer, shouldOpenPortal } from "@/lib/billing";
+import { query } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email-verification";
+import { PAID_TERMS_VERSION } from "@/lib/legal";
 import type { Plan } from "@/lib/plan-config";
 import { appUrl, getStripe, isStripeCheckoutConfigured, validateStripePrice, type BillingInterval } from "@/lib/stripe";
 
@@ -23,6 +25,10 @@ function pricingError(message: string): never {
   redirect(`/preise?billingError=${encodeURIComponent(message)}`);
 }
 
+function reviewError(plan: Exclude<Plan, "FREE">, interval: BillingInterval, message: string): never {
+  redirect(`/app/billing/checkout?plan=${plan}&interval=${interval}&error=${encodeURIComponent(message)}`);
+}
+
 async function createPortalUrl(customerId: string) {
   const session = await getStripe().billingPortal.sessions.create({
     customer: customerId,
@@ -38,13 +44,20 @@ export async function createCheckoutAction(formData: FormData) {
   const interval = billingInterval(value(formData, "interval"));
   if (!plan) pricingError("Ungültiger Tarif.");
 
+  const termsAccepted = formData.get("termsAccepted") === "on";
+  const withdrawalAcknowledged = formData.get("withdrawalAcknowledged") === "on";
+  const earlyPerformanceRequested = formData.get("earlyPerformanceRequested") === "on";
+  if (!termsAccepted || !withdrawalAcknowledged || !earlyPerformanceRequested) {
+    reviewError(plan, interval, "Bitte bestätige alle Vertrags- und Verbraucherinformationen, bevor du zu Stripe wechselst.");
+  }
+
   if (!user.email_verified_at) {
     await sendVerificationEmail(user).catch(() => undefined);
-    redirect("/app/settings?billingError=Bitte%20bestätige%20zuerst%20deine%20E-Mail-Adresse.%20Wir%20haben%20dir%20eine%20Bestätigungs-Mail%20gesendet.");
+    reviewError(plan, interval, "Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir eine Bestätigungs-Mail gesendet.");
   }
 
   if (!isStripeCheckoutConfigured(plan, interval)) {
-    pricingError("Dieser Tarif ist noch nicht für die Buchung konfiguriert.");
+    reviewError(plan, interval, "Dieser Tarif ist noch nicht für die Buchung konfiguriert.");
   }
 
   let verifiedPrice: Awaited<ReturnType<typeof validateStripePrice>> | null = null;
@@ -55,7 +68,7 @@ export async function createCheckoutAction(formData: FormData) {
   }
   if (!verifiedPrice?.valid) {
     console.error("NavoPass refused mismatching Stripe price", { plan, interval, reason: verifiedPrice?.reason });
-    pricingError("Die Stripe-Preiskonfiguration passt nicht zum gewählten NavoPass-Tarif. Es wurde keine Buchung gestartet.");
+    reviewError(plan, interval, "Die Stripe-Preiskonfiguration passt nicht zum gewählten NavoPass-Tarif. Es wurde keine Buchung gestartet.");
   }
 
   const billing = await getBillingState(user.id);
@@ -69,6 +82,14 @@ export async function createCheckoutAction(formData: FormData) {
     if (!portalUrl) redirect("/app/settings?billingError=Das%20Abo-Portal%20konnte%20gerade%20nicht%20geöffnet%20werden.");
     redirect(portalUrl);
   }
+
+  const consent = await query<{ id: string }>(
+    `INSERT INTO billing_consents (
+      user_id,plan,billing_interval,terms_version,terms_accepted_at,withdrawal_acknowledged_at,early_performance_requested_at
+     ) VALUES ($1,$2,$3,$4,now(),now(),now()) RETURNING id`,
+    [user.id, plan, interval, PAID_TERMS_VERSION]
+  );
+  const consentId = consent.rows[0].id;
 
   const customerId = await getOrCreateStripeCustomer(user);
   let checkoutUrl: string | null = null;
@@ -86,21 +107,24 @@ export async function createCheckoutAction(formData: FormData) {
         navopass_user_id: user.id,
         navopass_plan: plan,
         navopass_interval: interval,
+        navopass_consent_id: consentId,
       },
       subscription_data: {
         metadata: {
           navopass_user_id: user.id,
           navopass_plan: plan,
           navopass_interval: interval,
+          navopass_consent_id: consentId,
         },
       },
     });
+    await query("UPDATE billing_consents SET stripe_checkout_session_id=$1 WHERE id=$2", [checkout.id, consentId]);
     checkoutUrl = checkout.url;
   } catch (error) {
     console.error("NavoPass Stripe checkout creation failed", error);
   }
 
-  if (!checkoutUrl) pricingError("Stripe Checkout konnte gerade nicht gestartet werden. Bitte versuche es erneut.");
+  if (!checkoutUrl) reviewError(plan, interval, "Stripe Checkout konnte gerade nicht gestartet werden. Bitte versuche es erneut.");
   redirect(checkoutUrl);
 }
 
