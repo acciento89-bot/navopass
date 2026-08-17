@@ -50,13 +50,14 @@ export async function createCheckoutAction(formData: FormData) {
 
   const billing = await getBillingState(user.id);
   if (shouldOpenPortal(billing) && billing.stripe_customer_id) {
+    let portalUrl: string | null = null;
     try {
-      const url = await createPortalUrl(billing.stripe_customer_id);
-      redirect(url);
+      portalUrl = await createPortalUrl(billing.stripe_customer_id);
     } catch (error) {
       console.error("NavoPass billing portal creation failed", error);
-      redirect("/app/settings?billingError=Das%20Abo-Portal%20konnte%20gerade%20nicht%20geöffnet%20werden.");
     }
+    if (!portalUrl) redirect("/app/settings?billingError=Das%20Abo-Portal%20konnte%20gerade%20nicht%20geöffnet%20werden.");
+    redirect(portalUrl);
   }
 
   const customerId = await getOrCreateStripeCustomer(user);
