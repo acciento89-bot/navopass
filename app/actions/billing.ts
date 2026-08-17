@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { getBillingState, getOrCreateStripeCustomer, shouldOpenPortal } from "@/lib/billing";
 import { sendVerificationEmail } from "@/lib/email-verification";
 import type { Plan } from "@/lib/plan-config";
-import { appUrl, getStripe, isStripeCheckoutConfigured, priceIdFor, type BillingInterval } from "@/lib/stripe";
+import { appUrl, getStripe, isStripeCheckoutConfigured, validateStripePrice, type BillingInterval } from "@/lib/stripe";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -43,9 +43,19 @@ export async function createCheckoutAction(formData: FormData) {
     redirect("/app/settings?billingError=Bitte%20bestätige%20zuerst%20deine%20E-Mail-Adresse.%20Wir%20haben%20dir%20eine%20Bestätigungs-Mail%20gesendet.");
   }
 
-  const priceId = priceIdFor(plan, interval);
-  if (!priceId || !isStripeCheckoutConfigured(plan, interval)) {
+  if (!isStripeCheckoutConfigured(plan, interval)) {
     pricingError("Dieser Tarif ist noch nicht für die Buchung konfiguriert.");
+  }
+
+  let verifiedPrice: Awaited<ReturnType<typeof validateStripePrice>> | null = null;
+  try {
+    verifiedPrice = await validateStripePrice(plan, interval);
+  } catch (error) {
+    console.error("NavoPass Stripe price validation failed", error);
+  }
+  if (!verifiedPrice?.valid) {
+    console.error("NavoPass refused mismatching Stripe price", { plan, interval, reason: verifiedPrice?.reason });
+    pricingError("Die Stripe-Preiskonfiguration passt nicht zum gewählten NavoPass-Tarif. Es wurde keine Buchung gestartet.");
   }
 
   const billing = await getBillingState(user.id);
@@ -65,9 +75,10 @@ export async function createCheckoutAction(formData: FormData) {
   try {
     const checkout = await getStripe().checkout.sessions.create({
       mode: "subscription",
+      submit_type: "pay",
       customer: customerId,
       client_reference_id: user.id,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: verifiedPrice.priceId, quantity: 1 }],
       allow_promotion_codes: true,
       success_url: `${appUrl()}/app/settings?billingSuccess=1`,
       cancel_url: `${appUrl()}/preise?billingCancelled=1`,
