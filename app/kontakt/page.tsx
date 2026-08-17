@@ -8,7 +8,9 @@ export const metadata: Metadata = {
   description: "Kontakt und Support für NavoPass.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string }> }) {
+  const { sent, error } = await searchParams;
+
   return (
     <PublicShell>
       <main className={styles.main}>
@@ -29,8 +31,8 @@ export default function ContactPage() {
 
           <section>
             <h2>Kontaktformular</h2>
-            <p>Das Formular bereitet deine Nachricht lokal im E-Mail-Programm vor. So werden deine Eingaben nicht an einen zusätzlichen Formularanbieter übertragen.</p>
-            <NavoPassContactForm />
+            <p>Du kannst deine Anfrage direkt über NavoPass senden. Die Nachricht wird auf dem NavoPass-Server validiert und anschließend an den Support weitergeleitet.</p>
+            <NavoPassContactForm sent={sent === "1"} error={error} />
           </section>
 
           <section>
