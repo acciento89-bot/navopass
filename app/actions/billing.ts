@@ -100,7 +100,6 @@ export async function createCheckoutAction(formData: FormData) {
       customer: customerId,
       client_reference_id: user.id,
       line_items: [{ price: verifiedPrice.priceId, quantity: 1 }],
-      allow_promotion_codes: true,
       success_url: `${appUrl()}/app/settings?billingSuccess=1`,
       cancel_url: `${appUrl()}/preise?billingCancelled=1`,
       metadata: {
