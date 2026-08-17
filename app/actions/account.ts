@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { redirect } from "next/navigation";
 import { createSession, destroyOtherSessions, destroySession, findUserByEmail, hashPassword, normalizeEmail, requireUser, verifyPassword } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/email-verification";
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR || "/app/uploads";
 
@@ -18,11 +19,23 @@ export async function updateProfileAction(formData: FormData) {
   const email = normalizeEmail(text(formData, "email", 320));
   if (name.length < 2) redirect("/app/settings?profileError=Bitte%20einen%20Namen%20angeben");
   if (!email.includes("@")) redirect("/app/settings?profileError=Bitte%20eine%20gueltige%20E-Mail%20angeben");
-  if (email !== user.email) {
+
+  const emailChanged = email !== user.email;
+  if (emailChanged) {
     const existing = await findUserByEmail(email);
     if (existing && existing.id !== user.id) redirect("/app/settings?profileError=Diese%20E-Mail%20wird%20bereits%20verwendet");
+    await query("UPDATE users SET name=$1,email=$2,email_verified_at=NULL WHERE id=$3", [name, email, user.id]);
+    const delivery = await sendVerificationEmail({ id: user.id, email, name, email_verified_at: null }).catch((error) => {
+      console.error("NavoPass changed-email verification failed", error);
+      return "failed" as const;
+    });
+    const message = delivery === "sent"
+      ? "Profil gespeichert. Bitte bestätige deine neue E-Mail-Adresse."
+      : "Profil gespeichert. Die Bestätigungs-E-Mail konnte noch nicht gesendet werden.";
+    redirect(`/app/settings?profileSuccess=${encodeURIComponent(message)}`);
   }
-  await query("UPDATE users SET name=$1,email=$2 WHERE id=$3", [name, email, user.id]);
+
+  await query("UPDATE users SET name=$1 WHERE id=$2", [name, user.id]);
   redirect("/app/settings?profileSuccess=Profil%20gespeichert");
 }
 

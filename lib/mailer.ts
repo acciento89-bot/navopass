@@ -10,7 +10,7 @@ const smtpSecure = process.env.SMTP_SECURE
   : smtpPort === 465;
 
 export function isMailConfigured() {
-  return Boolean(smtpHost && smtpFrom && Number.isFinite(smtpPort));
+  return Boolean(smtpHost && smtpUser && smtpPass && smtpFrom && Number.isFinite(smtpPort));
 }
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
@@ -22,13 +22,25 @@ function getTransporter() {
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
-      auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
+      auth: { user: smtpUser, pass: smtpPass },
+      requireTLS: !smtpSecure && smtpPort === 587,
       connectionTimeout: 15_000,
       greetingTimeout: 15_000,
       socketTimeout: 30_000,
     });
   }
   return transporter;
+}
+
+export async function verifyMailTransport() {
+  if (!isMailConfigured()) return { ok: false as const, reason: "unconfigured" as const };
+  try {
+    await getTransporter().verify();
+    return { ok: true as const };
+  } catch (error) {
+    console.error("NavoPass SMTP verification failed", error);
+    return { ok: false as const, reason: "connection-failed" as const };
+  }
 }
 
 export async function sendMail({
