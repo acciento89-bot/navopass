@@ -40,6 +40,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@kamilunavo.com}
     volumes:
       - navopass-uploads:/app/uploads
     expose:
