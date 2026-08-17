@@ -15,4 +15,23 @@ export const BILLING_SCHEMA_STATEMENTS = [
     processed_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS stripe_events_processed_idx ON stripe_events(processed_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS cancellation_requests (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+    email text NOT NULL,
+    contract_label text NOT NULL,
+    cancellation_kind text NOT NULL CHECK (cancellation_kind IN ('ORDINARY','EXTRAORDINARY')),
+    reason text,
+    requested_end_mode text NOT NULL CHECK (requested_end_mode IN ('NEXT_POSSIBLE','IMMEDIATE','DATE')),
+    requested_end_date date,
+    stripe_subscription_id text,
+    processing_status text NOT NULL DEFAULT 'RECEIVED',
+    processing_note text,
+    receipt_token_hash text NOT NULL UNIQUE,
+    requested_at timestamptz NOT NULL DEFAULT now(),
+    confirmation_sent_at timestamptz,
+    support_notified_at timestamptz
+  )`,
+  `CREATE INDEX IF NOT EXISTS cancellation_requests_email_idx ON cancellation_requests(lower(email), requested_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS cancellation_requests_status_idx ON cancellation_requests(processing_status, requested_at)`,
 ] as const;
