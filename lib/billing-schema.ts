@@ -15,6 +15,20 @@ export const BILLING_SCHEMA_STATEMENTS = [
     processed_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS stripe_events_processed_idx ON stripe_events(processed_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS billing_consents (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan text NOT NULL CHECK (plan IN ('PLUS','FAMILY','BUSINESS')),
+    billing_interval text NOT NULL CHECK (billing_interval IN ('monthly','yearly')),
+    terms_version text NOT NULL,
+    terms_accepted_at timestamptz NOT NULL,
+    withdrawal_acknowledged_at timestamptz NOT NULL,
+    early_performance_requested_at timestamptz NOT NULL,
+    stripe_checkout_session_id text,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS billing_consents_checkout_unique_idx ON billing_consents(stripe_checkout_session_id) WHERE stripe_checkout_session_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS billing_consents_user_idx ON billing_consents(user_id, created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS cancellation_requests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid REFERENCES users(id) ON DELETE SET NULL,
