@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import type { Plan } from "@/lib/plan-config";
+import { PLAN_CONFIG, type Plan } from "@/lib/plan-config";
 
 export type BillingInterval = "monthly" | "yearly";
 
@@ -41,6 +41,30 @@ export function appUrl() {
 export function priceIdFor(plan: Plan, interval: BillingInterval) {
   if (plan === "FREE") return null;
   return priceEnv[plan][interval] || null;
+}
+
+export async function validateStripePrice(plan: Exclude<Plan, "FREE">, interval: BillingInterval) {
+  const priceId = priceIdFor(plan, interval);
+  if (!priceId) return { valid: false as const, reason: "Price-ID fehlt." };
+
+  const price = await getStripe().prices.retrieve(priceId);
+  const expectedAmount = interval === "yearly" ? PLAN_CONFIG[plan].yearlyCents : PLAN_CONFIG[plan].monthlyCents;
+  const expectedStripeInterval = interval === "yearly" ? "year" : "month";
+  const valid = Boolean(
+    price.active &&
+    price.currency.toLowerCase() === "eur" &&
+    price.unit_amount === expectedAmount &&
+    price.recurring?.interval === expectedStripeInterval &&
+    (price.recurring?.interval_count ?? 1) === 1
+  );
+
+  if (!valid) {
+    return {
+      valid: false as const,
+      reason: `Stripe-Preis ${priceId} passt nicht zu ${plan}/${interval}: erwartet ${expectedAmount} EUR-Cent pro ${expectedStripeInterval}.`,
+    };
+  }
+  return { valid: true as const, priceId, price };
 }
 
 export function planForPriceId(priceId: string | null | undefined): Exclude<Plan, "FREE"> | null {
