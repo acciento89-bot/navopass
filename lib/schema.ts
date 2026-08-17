@@ -65,6 +65,20 @@ export const SCHEMA_STATEMENTS = [
     PRIMARY KEY (workspace_id,user_id)
   )`,
   `CREATE INDEX IF NOT EXISTS workspace_members_user_idx ON workspace_members(user_id)`,
+  `CREATE OR REPLACE FUNCTION navopass_require_verified_member() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.role <> 'OWNER' AND NOT EXISTS (
+        SELECT 1 FROM users u WHERE u.id=NEW.user_id AND u.email_verified_at IS NOT NULL
+      ) THEN
+        RAISE EXCEPTION 'EMAIL_NOT_VERIFIED' USING ERRCODE='check_violation';
+      END IF;
+      RETURN NEW;
+    END;
+   $$ LANGUAGE plpgsql`,
+  `DROP TRIGGER IF EXISTS workspace_members_require_verified ON workspace_members`,
+  `CREATE TRIGGER workspace_members_require_verified
+    BEFORE INSERT ON workspace_members
+    FOR EACH ROW EXECUTE FUNCTION navopass_require_verified_member()`,
   `CREATE TABLE IF NOT EXISTS workspace_invites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
