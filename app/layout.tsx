@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 import "./service-extra.css";
 import "./collaboration.css";
@@ -16,5 +17,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#0b6e9d", colorScheme: "light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="de"><body>{children}</body></html>;
+  return <html lang="de"><body>{children}<PwaRegister /></body></html>;
 }
