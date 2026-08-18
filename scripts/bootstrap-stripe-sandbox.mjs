@@ -1,12 +1,40 @@
-import Stripe from "stripe";
-
 const key = process.env.STRIPE_SECRET_KEY?.trim();
 if (!key) throw new Error("STRIPE_SECRET_KEY fehlt");
 if (!key.startsWith("sk_test_")) {
   throw new Error("ABBRUCH: Dieser Bootstrap akzeptiert ausschließlich sk_test_-Schlüssel. Live-Stripe wird nicht verändert.");
 }
 
-const stripe = new Stripe(key);
+const API_BASE = "https://api.stripe.com/v1";
+
+async function stripeRequest(method, path, params = {}, idempotencyKey) {
+  const url = new URL(`${API_BASE}${path}`);
+  const headers = {
+    Authorization: `Bearer ${key}`,
+  };
+
+  const options = { method, headers };
+  if (method === "GET") {
+    for (const [name, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) url.searchParams.set(name, String(value));
+    }
+  } else {
+    headers["Content-Type"] = "application/x-www-form-urlencoded";
+    if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+    const body = new URLSearchParams();
+    for (const [name, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) body.set(name, String(value));
+    }
+    options.body = body;
+  }
+
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = payload?.error?.message || `${response.status} ${response.statusText}`;
+    throw new Error(`Stripe API Fehler (${method} ${path}): ${message}`);
+  }
+  return payload;
+}
 
 const plans = [
   {
@@ -33,18 +61,21 @@ const plans = [
 ];
 
 async function findOrCreateProduct(plan) {
-  const products = await stripe.products.list({ active: true, limit: 100 });
-  let product = products.data.find((item) => item.metadata?.navopass_plan === plan.code);
+  const products = await stripeRequest("GET", "/products", { active: true, limit: 100 });
+  let product = products.data?.find((item) => item.metadata?.navopass_plan === plan.code);
 
   if (!product) {
-    product = await stripe.products.create({
-      name: plan.name,
-      description: plan.description,
-      metadata: {
-        app: "navopass",
-        navopass_plan: plan.code,
+    product = await stripeRequest(
+      "POST",
+      "/products",
+      {
+        name: plan.name,
+        description: plan.description,
+        "metadata[app]": "navopass",
+        "metadata[navopass_plan]": plan.code,
       },
-    });
+      `navopass-sandbox-product-${plan.code.toLowerCase()}`
+    );
     console.log(`Produkt erstellt: ${plan.name} -> ${product.id}`);
   } else {
     console.log(`Produkt vorhanden: ${plan.name} -> ${product.id}`);
@@ -55,9 +86,9 @@ async function findOrCreateProduct(plan) {
 }
 
 async function findOrCreatePrice(product, plan, interval, amount) {
-  const prices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+  const prices = await stripeRequest("GET", "/prices", { product: product.id, active: true, limit: 100 });
   const stripeInterval = interval === "monthly" ? "month" : "year";
-  let price = prices.data.find((item) =>
+  let price = prices.data?.find((item) =>
     item.currency === "eur" &&
     item.unit_amount === amount &&
     item.recurring?.interval === stripeInterval &&
@@ -66,17 +97,20 @@ async function findOrCreatePrice(product, plan, interval, amount) {
   );
 
   if (!price) {
-    price = await stripe.prices.create({
-      product: product.id,
-      currency: "eur",
-      unit_amount: amount,
-      recurring: { interval: stripeInterval },
-      metadata: {
-        app: "navopass",
-        navopass_plan: plan.code,
-        navopass_interval: interval,
+    price = await stripeRequest(
+      "POST",
+      "/prices",
+      {
+        product: product.id,
+        currency: "eur",
+        unit_amount: amount,
+        "recurring[interval]": stripeInterval,
+        "metadata[app]": "navopass",
+        "metadata[navopass_plan]": plan.code,
+        "metadata[navopass_interval]": interval,
       },
-    });
+      `navopass-sandbox-price-${plan.code.toLowerCase()}-${interval}`
+    );
     console.log(`Preis erstellt: ${plan.name} ${interval} -> ${price.id}`);
   } else {
     console.log(`Preis vorhanden: ${plan.name} ${interval} -> ${price.id}`);
