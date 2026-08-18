@@ -42,9 +42,23 @@ export async function getBillingState(userId: string): Promise<BillingState> {
 
 export async function getOrCreateStripeCustomer(user: { id: string; email: string; name: string }) {
   const state = await getBillingState(user.id);
-  if (state.stripe_customer_id) return state.stripe_customer_id;
-
   const stripe = getStripe();
+
+  if (state.stripe_customer_id) {
+    try {
+      const existing = await stripe.customers.retrieve(state.stripe_customer_id);
+      if (!("deleted" in existing && existing.deleted)) return state.stripe_customer_id;
+      console.warn("NavoPass Stripe customer was deleted; creating replacement", { userId: user.id });
+    } catch (error) {
+      const stripeError = error as { code?: string; type?: string };
+      if (stripeError.code !== "resource_missing") throw error;
+      console.warn("NavoPass Stripe customer belongs to another mode/account; creating replacement", {
+        userId: user.id,
+        customerId: state.stripe_customer_id,
+      });
+    }
+  }
+
   const customer = await stripe.customers.create(
     {
       email: user.email,
@@ -55,7 +69,7 @@ export async function getOrCreateStripeCustomer(user: { id: string; email: strin
   );
 
   const updated = await query<{ stripe_customer_id: string | null }>(
-    `UPDATE users SET stripe_customer_id=COALESCE(stripe_customer_id,$1)
+    `UPDATE users SET stripe_customer_id=$1
      WHERE id=$2 RETURNING stripe_customer_id`,
     [customer.id, user.id]
   );
