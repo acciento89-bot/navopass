@@ -29,6 +29,16 @@ function reviewError(plan: Exclude<Plan, "FREE">, interval: BillingInterval, mes
   redirect(`/app/billing/checkout?plan=${plan}&interval=${interval}&error=${encodeURIComponent(message)}`);
 }
 
+function checkoutFailureMessage(error: unknown) {
+  const isSandbox = process.env.STRIPE_SECRET_KEY?.trim().startsWith("sk_test_") ?? false;
+  if (!isSandbox) return "Stripe Checkout konnte gerade nicht gestartet werden. Bitte versuche es erneut.";
+
+  const candidate = error as { message?: unknown; code?: unknown; type?: unknown; requestId?: unknown };
+  const message = typeof candidate?.message === "string" ? candidate.message : "Unbekannter Stripe-Fehler";
+  const code = typeof candidate?.code === "string" ? ` [${candidate.code}]` : "";
+  return `Stripe-Sandbox: ${message}${code}`.slice(0, 500);
+}
+
 async function createPortalUrl(customerId: string) {
   const session = await getStripe().billingPortal.sessions.create({
     customer: customerId,
@@ -91,12 +101,14 @@ export async function createCheckoutAction(formData: FormData) {
   );
   const consentId = consent.rows[0].id;
 
-  const customerId = await getOrCreateStripeCustomer(user);
   let checkoutUrl: string | null = null;
+  let checkoutError: string | null = null;
   try {
+    const customerId = await getOrCreateStripeCustomer(user);
     const checkout = await getStripe().checkout.sessions.create({
       mode: "subscription",
       submit_type: "pay",
+      locale: "de",
       customer: customerId,
       client_reference_id: user.id,
       line_items: [{ price: verifiedPrice.priceId, quantity: 1 }],
@@ -121,9 +133,10 @@ export async function createCheckoutAction(formData: FormData) {
     checkoutUrl = checkout.url;
   } catch (error) {
     console.error("NavoPass Stripe checkout creation failed", error);
+    checkoutError = checkoutFailureMessage(error);
   }
 
-  if (!checkoutUrl) reviewError(plan, interval, "Stripe Checkout konnte gerade nicht gestartet werden. Bitte versuche es erneut.");
+  if (!checkoutUrl) reviewError(plan, interval, checkoutError || "Stripe Checkout konnte gerade nicht gestartet werden. Bitte versuche es erneut.");
   redirect(checkoutUrl);
 }
 
