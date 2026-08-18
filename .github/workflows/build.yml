@@ -34,6 +34,13 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Validate operations files
+        env:
+          POSTGRES_PASSWORD: navopass-ci
+        run: |
+          sh -n scripts/backup.sh
+          sh -n scripts/restore-backup.sh
+          docker compose config >/dev/null
       - run: npm run typecheck
       - run: npm run test:unit
       - run: npm run build
