@@ -1,9 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
+import { getCurrentUser } from "@/lib/auth";
 import styles from "@/app/public-pages.module.css";
 
-export function PublicShell({ children }: { children: ReactNode }) {
+export async function PublicShell({ children }: { children: ReactNode }) {
+  const user = await getCurrentUser();
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -20,8 +23,17 @@ export function PublicShell({ children }: { children: ReactNode }) {
               <Link className={styles.withdrawLink} href="/vertrag-widerrufen">Vertrag widerrufen</Link>
               <Link className={styles.cancelLink} href="/vertrag-kuendigen">Verträge hier kündigen</Link>
             </div>
-            <Link className={styles.login} href="/login">Anmelden</Link>
-            <Link className={styles.cta} href="/register">Kostenlos starten</Link>
+            {user ? (
+              <>
+                <Link className={styles.login} href="/app">Meine Pässe</Link>
+                <Link className={styles.cta} href="/app/settings">Mein Konto</Link>
+              </>
+            ) : (
+              <>
+                <Link className={styles.login} href="/login">Anmelden</Link>
+                <Link className={styles.cta} href="/register">Kostenlos starten</Link>
+              </>
+            )}
           </div>
         </div>
       </header>
