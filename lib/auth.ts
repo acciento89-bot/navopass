@@ -8,6 +8,7 @@ import type { Plan } from "@/lib/plan-config";
 const scrypt = promisify(scryptCallback);
 const COOKIE_NAME = "navopass_session";
 const SESSION_DAYS = 30;
+const MAX_ACTIVE_SESSIONS = 20;
 
 export type CurrentUser = { id: string; email: string; name: string; reminder_days?: number; plan?: Plan; email_verified_at?: string | null };
 type UserRow = CurrentUser & { password_hash: string };
@@ -44,7 +45,16 @@ export { safeNext };
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  await query("DELETE FROM sessions WHERE expires_at<=now()");
   await query("INSERT INTO sessions (user_id, token_hash, expires_at) VALUES ($1,$2,$3)", [userId, tokenHash(token), expires]);
+  await query(
+    `DELETE FROM sessions
+     WHERE user_id=$1 AND id NOT IN (
+       SELECT id FROM sessions WHERE user_id=$1 AND expires_at>now() ORDER BY created_at DESC LIMIT $2
+     )`,
+    [userId, MAX_ACTIVE_SESSIONS]
+  );
+
   const store = await cookies();
   store.set(COOKIE_NAME, token, {
     httpOnly: true,
@@ -52,6 +62,7 @@ export async function createSession(userId: string) {
     secure: process.env.NODE_ENV === "production",
     path: "/",
     expires,
+    priority: "high",
   });
 }
 
