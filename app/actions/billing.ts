@@ -109,6 +109,8 @@ export async function createCheckoutAction(formData: FormData) {
       mode: "subscription",
       locale: "de",
       customer: customerId,
+      billing_address_collection: "required",
+      customer_update: { address: "auto", name: "auto" },
       client_reference_id: user.id,
       line_items: [{ price: verifiedPrice.priceId, quantity: 1 }],
       success_url: `${appUrl()}/app/settings?billingSuccess=1`,
