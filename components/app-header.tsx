@@ -15,6 +15,8 @@ export function AppHeader({ name }: { name: string }) {
         <Link href="/app/notifications" className="app-nav-link">Hinweise</Link>
         <Link href="/app/team" className="app-nav-link">Bereiche</Link>
         <Link href="/app/settings" className="app-nav-link">Einstellungen</Link>
+        <Link href="/preise" className="app-nav-link">Preise</Link>
+        <Link href="/impressum" className="app-nav-link">Rechtliches</Link>
         <Link href="/app/assets/new" className="button small">+ Objekt</Link>
         <form action={logoutAction}><button className="button ghost small" type="submit">Abmelden</button></form>
       </nav>
