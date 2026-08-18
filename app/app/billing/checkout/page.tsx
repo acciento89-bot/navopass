@@ -4,7 +4,7 @@ import { createCheckoutAction } from "@/app/actions/billing";
 import { AppHeader } from "@/components/app-header";
 import { requireUser } from "@/lib/auth";
 import { getBillingState, shouldOpenPortal } from "@/lib/billing";
-import { PAID_TERMS_VERSION } from "@/lib/legal";
+import { KLEINUNTERNEHMER_NOTICE, PAID_TERMS_VERSION } from "@/lib/legal";
 import { PLAN_CONFIG, formatEuro, formatStorage, type Plan } from "@/lib/plan-config";
 import type { BillingInterval } from "@/lib/stripe";
 
@@ -48,12 +48,13 @@ export default async function BillingCheckoutPage({ searchParams }: { searchPara
             <div><span>Nutzer</span><b>bis {definition.maxSeats}</b></div>
           </div>
           <div className="limit-note"><b>Fortlaufendes Abonnement.</b> Nach jedem Abrechnungszeitraum verlängert sich das Abo um einen weiteren gleich langen Abrechnungszeitraum, bis es gekündigt wird. Die ordentliche Kündigung ist zum Ende des laufenden Abrechnungszeitraums möglich.</div>
+          <div className="limit-note"><b>Umsatzsteuer.</b> {KLEINUNTERNEHMER_NOTICE}</div>
         </article>
 
         <article className="panel settings-panel">
           <div className="panel-title"><div><span className="eyebrow">Vertragspartner</span><h2>Kamilunavo</h2></div><span className="settings-icon">DE</span></div>
           <p className="muted">Piotr Kaminski – Kamilunavo<br />Otto-Braun-Straße 14<br />40595 Düsseldorf<br />Deutschland</p>
-          <p className="muted">Die Zahlung wird im nächsten Schritt über Stripe abgewickelt. Die im Stripe-Checkout unmittelbar vor Abschluss angezeigte Gesamtsumme muss dieser Tarifauswahl entsprechen; NavoPass prüft die konfigurierte Stripe-Price-ID zusätzlich serverseitig.</p>
+          <p className="muted">Die Zahlung wird im nächsten Schritt über Stripe abgewickelt. Stripe fragt die Rechnungsadresse ab, damit die Abo-Rechnung vollständig erstellt werden kann. Die angezeigte Gesamtsumme muss dieser Tarifauswahl entsprechen; NavoPass prüft die konfigurierte Stripe-Price-ID zusätzlich serverseitig.</p>
         </article>
 
         <article className="panel settings-panel span-2">
