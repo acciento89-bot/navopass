@@ -10,6 +10,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://navopass:navopass-ci@127.0.0.1:5432/navopass
+      APP_URL: http://127.0.0.1:3000
+      RATE_LIMIT_SECRET: ci-rate-limit-secret
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: navopass
+          POSTGRES_USER: navopass
+          POSTGRES_PASSWORD: navopass-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U navopass -d navopass"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,4 +35,23 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run typecheck
+      - run: npm run test:unit
       - run: npm run build
+      - name: Production HTTP smoke tests
+        run: |
+          npm start > /tmp/navopass.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true; cat /tmp/navopass.log' EXIT
+          ready=0
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "NavoPass did not become ready"
+            exit 1
+          fi
+          npm run test:smoke
