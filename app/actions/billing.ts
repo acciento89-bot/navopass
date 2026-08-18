@@ -107,7 +107,6 @@ export async function createCheckoutAction(formData: FormData) {
     const customerId = await getOrCreateStripeCustomer(user);
     const checkout = await getStripe().checkout.sessions.create({
       mode: "subscription",
-      submit_type: "pay",
       locale: "de",
       customer: customerId,
       client_reference_id: user.id,
@@ -143,7 +142,7 @@ export async function createCheckoutAction(formData: FormData) {
 export async function openBillingPortalAction() {
   const user = await requireUser();
   const billing = await getBillingState(user.id);
-  if (!billing.stripe_customer_id) redirect("/preise");
+  if (!billing.stripe_customer_id || !shouldOpenPortal(billing)) redirect("/preise");
 
   let url: string | null = null;
   try {
