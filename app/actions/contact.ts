@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { brandedMail, escapeHtml, isMailConfigured, sendMail } from "@/lib/mailer";
+import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL?.trim() || "support@kamilunavo.com";
 const allowedTopics = new Set([
@@ -23,6 +24,10 @@ function fail(message: string): never {
 export async function sendContactAction(formData: FormData) {
   const honeypot = value(formData, "companyWebsite", 200);
   if (honeypot) redirect("/kontakt?sent=1#kontaktformular");
+
+  const ip = await requestIp();
+  const limit = await consumeRateLimit({ scope: "contact:ip", identifier: ip, limit: 6, windowSeconds: 15 * 60 });
+  if (!limit.allowed) fail("Zu viele Nachrichten in kurzer Zeit. Bitte versuche es später erneut oder schreibe direkt an support@kamilunavo.com.");
 
   const name = value(formData, "name", 120);
   const email = value(formData, "email", 240).toLowerCase();
