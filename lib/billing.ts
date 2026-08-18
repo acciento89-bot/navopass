@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { query, transaction } from "@/lib/db";
+import { KLEINUNTERNEHMER_NOTICE } from "@/lib/legal";
 import type { Plan } from "@/lib/plan-config";
 import {
   getStripe,
@@ -40,6 +41,17 @@ export async function getBillingState(userId: string): Promise<BillingState> {
   };
 }
 
+async function syncStripeCustomer(customerId: string, user: { id: string; email: string; name: string }) {
+  const stripe = getStripe();
+  await stripe.customers.update(customerId, {
+    email: user.email,
+    name: user.name,
+    preferred_locales: ["de"],
+    invoice_settings: { footer: KLEINUNTERNEHMER_NOTICE },
+    metadata: { navopass_user_id: user.id, navopass_service: "navopass" },
+  });
+}
+
 export async function getOrCreateStripeCustomer(user: { id: string; email: string; name: string }) {
   const state = await getBillingState(user.id);
   const stripe = getStripe();
@@ -47,7 +59,16 @@ export async function getOrCreateStripeCustomer(user: { id: string; email: strin
   if (state.stripe_customer_id) {
     try {
       const existing = await stripe.customers.retrieve(state.stripe_customer_id);
-      if (!("deleted" in existing && existing.deleted)) return state.stripe_customer_id;
+      if (!("deleted" in existing && existing.deleted)) {
+        const needsSync =
+          existing.email !== user.email ||
+          existing.name !== user.name ||
+          existing.invoice_settings?.footer !== KLEINUNTERNEHMER_NOTICE ||
+          !existing.preferred_locales?.includes("de") ||
+          existing.metadata?.navopass_user_id !== user.id;
+        if (needsSync) await syncStripeCustomer(state.stripe_customer_id, user);
+        return state.stripe_customer_id;
+      }
       console.warn("NavoPass Stripe customer was deleted; creating replacement", { userId: user.id });
     } catch (error) {
       const stripeError = error as { code?: string; type?: string };
@@ -63,7 +84,9 @@ export async function getOrCreateStripeCustomer(user: { id: string; email: strin
     {
       email: user.email,
       name: user.name,
-      metadata: { navopass_user_id: user.id },
+      preferred_locales: ["de"],
+      invoice_settings: { footer: KLEINUNTERNEHMER_NOTICE },
+      metadata: { navopass_user_id: user.id, navopass_service: "navopass" },
     },
     { idempotencyKey: `navopass-customer-${user.id}` }
   );
