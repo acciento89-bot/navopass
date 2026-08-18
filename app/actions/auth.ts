@@ -6,12 +6,15 @@ import { createSession, destroySession, findUserByEmail, hashPassword, normalize
 import { query, transaction } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email-verification";
 import { brandedMail, isMailConfigured, sendMail } from "@/lib/mailer";
+import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 import { ensurePersonalWorkspace } from "@/lib/workspaces";
 
 const TERMS_VERSION = "2026-08-15";
 const RESET_TTL_MINUTES = 60;
 const RESET_WINDOW_MINUTES = 15;
 const RESET_WINDOW_LIMIT = 3;
+const MAX_PASSWORD_LENGTH = 256;
+const DUMMY_PASSWORD_HASH = "scrypt$navopass-invalid-login$7014d0ba76c320105ee163ed7930c590178f4697efc7361954100e2a7cc6d091f002ecc28deeab2f510a4fb20bc048c4cb595f1dd15d14c949f173718a9e4d78";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -39,10 +42,13 @@ export async function registerAction(formData: FormData) {
   const password = text(formData, "password");
   const next = safeNext(text(formData, "next"));
   const legalAccepted = formData.get("legalAccepted") === "on";
+  const ip = await requestIp();
+  const limit = await consumeRateLimit({ scope: "register:ip", identifier: ip, limit: 8, windowSeconds: 60 * 60 });
 
-  if (name.length < 2) redirect(errorTarget("register", "Bitte Namen angeben", next));
-  if (!email.includes("@")) redirect(errorTarget("register", "Bitte gültige E-Mail angeben", next));
-  if (password.length < 8) redirect(errorTarget("register", "Passwort muss mindestens 8 Zeichen haben", next));
+  if (!limit.allowed) redirect(errorTarget("register", "Zu viele Registrierungsversuche. Bitte versuche es später erneut.", next));
+  if (name.length < 2 || name.length > 120) redirect(errorTarget("register", "Bitte Namen angeben", next));
+  if (!email.includes("@") || email.length > 254) redirect(errorTarget("register", "Bitte gültige E-Mail angeben", next));
+  if (password.length < 8 || password.length > MAX_PASSWORD_LENGTH) redirect(errorTarget("register", "Passwort muss zwischen 8 und 256 Zeichen haben", next));
   if (!legalAccepted) redirect(errorTarget("register", "Bitte Nutzungsbedingungen akzeptieren und Datenschutz zur Kenntnis nehmen", next));
 
   const existing = await findUserByEmail(email);
@@ -67,9 +73,21 @@ export async function loginAction(formData: FormData) {
   const email = normalizeEmail(text(formData, "email"));
   const password = text(formData, "password");
   const next = safeNext(text(formData, "next"));
-  const user = await findUserByEmail(email);
+  const ip = await requestIp();
+  const [ipLimit, pairLimit] = await Promise.all([
+    consumeRateLimit({ scope: "login:ip", identifier: ip, limit: 50, windowSeconds: 15 * 60 }),
+    consumeRateLimit({ scope: "login:pair", identifier: `${ip}|${email}`, limit: 10, windowSeconds: 15 * 60 }),
+  ]);
 
-  if (!user || !(await verifyPassword(password, user.password_hash))) {
+  if (!ipLimit.allowed || !pairLimit.allowed) {
+    redirect(errorTarget("login", "Zu viele Anmeldeversuche. Bitte warte einige Minuten und versuche es erneut.", next));
+  }
+
+  const user = await findUserByEmail(email);
+  const passwordForCheck = password.slice(0, MAX_PASSWORD_LENGTH);
+  const passwordMatches = await verifyPassword(passwordForCheck, user?.password_hash ?? DUMMY_PASSWORD_HASH);
+
+  if (!user || password.length > MAX_PASSWORD_LENGTH || !passwordMatches) {
     redirect(errorTarget("login", "E-Mail oder Passwort ist falsch", next));
   }
 
@@ -79,8 +97,12 @@ export async function loginAction(formData: FormData) {
 
 export async function requestPasswordResetAction(formData: FormData) {
   const email = normalizeEmail(text(formData, "email"));
-  if (!email.includes("@")) redirect("/passwort-vergessen?error=Bitte%20eine%20gültige%20E-Mail-Adresse%20angeben");
+  if (!email.includes("@") || email.length > 254) redirect("/passwort-vergessen?error=Bitte%20eine%20gültige%20E-Mail-Adresse%20angeben");
   if (!isMailConfigured()) redirect("/passwort-vergessen?error=Der%20E-Mail-Versand%20ist%20vorübergehend%20nicht%20verfügbar.%20Bitte%20versuche%20es%20später%20erneut.");
+
+  const ip = await requestIp();
+  const ipLimit = await consumeRateLimit({ scope: "password-reset:ip", identifier: ip, limit: 12, windowSeconds: 60 * 60 });
+  if (!ipLimit.allowed) redirect("/passwort-vergessen?sent=1");
 
   const user = await findUserByEmail(email);
   if (user) {
@@ -134,9 +156,12 @@ export async function resetPasswordAction(formData: FormData) {
   const token = text(formData, "token");
   const password = text(formData, "password");
   const confirmation = text(formData, "confirmation");
+  const ip = await requestIp();
+  const limit = await consumeRateLimit({ scope: "password-reset-submit:ip", identifier: ip, limit: 20, windowSeconds: 60 * 60 });
 
+  if (!limit.allowed) redirect("/passwort-vergessen?error=Zu%20viele%20Versuche.%20Bitte%20versuche%20es%20später%20erneut.");
   if (!token) redirect("/passwort-vergessen?error=Der%20Zurücksetzen-Link%20ist%20ungültig");
-  if (password.length < 8) redirect(resetTarget(token, "Das Passwort muss mindestens 8 Zeichen haben"));
+  if (password.length < 8 || password.length > MAX_PASSWORD_LENGTH) redirect(resetTarget(token, "Das Passwort muss zwischen 8 und 256 Zeichen haben"));
   if (password !== confirmation) redirect(resetTarget(token, "Die Passwörter stimmen nicht überein"));
 
   const tokenHash = resetHash(token);

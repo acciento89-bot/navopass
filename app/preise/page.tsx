@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { getBillingState, shouldOpenPortal } from "@/lib/billing";
+import { KLEINUNTERNEHMER_NOTICE } from "@/lib/legal";
 import { PLAN_CONFIG, formatEuro, formatStorage, type Plan } from "@/lib/plan-config";
 import { isStripeCheckoutConfigured } from "@/lib/stripe";
 import styles from "@/app/public-pages.module.css";
@@ -87,6 +88,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
           })}
         </section>
 
+        <div className={styles.notice}><strong>Umsatzsteuer:</strong> {KLEINUNTERNEHMER_NOTICE}</div>
         <div className={styles.notice}><strong>Abos:</strong> Vor jeder neuen kostenpflichtigen Bestellung zeigt NavoPass Tarif, Abrechnungszeitraum, Kündigungs- und Widerrufsinformationen noch einmal an. Die Zahlungsdaten werden anschließend sicher über Stripe verarbeitet. Tarifstatus und Zugriffsrechte werden serverseitig aus dem bestätigten Stripe-Abonnement übernommen.</div>
         <div className="business-contact">Mehr als 1.000 Pässe oder 10 Nutzer benötigt? <Link href="/kontakt">Individuelles Angebot anfragen →</Link></div>
       </main>

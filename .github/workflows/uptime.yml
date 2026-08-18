@@ -1,0 +1,24 @@
+name: Production Uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check NavoPass production health
+        run: |
+          body="$(curl --fail --silent --show-error --max-time 20 https://navopass.de/api/health)"
+          echo "$body"
+          BODY="$body" node -e '
+            const health = JSON.parse(process.env.BODY || "{}");
+            if (health.ok !== true) throw new Error("NavoPass core health is not OK");
+            if (health.productionReady !== true) throw new Error("NavoPass is not productionReady");
+            if (health.database !== true) throw new Error("Database is not healthy");
+            if (health.mailConfigured !== true) throw new Error("Mail is not configured");
+            if (health.billingConfigured !== true) throw new Error("Billing is not configured");
+            if (health.backup?.fresh !== true) throw new Error("Backup is missing or stale");
+          '

@@ -1,12 +1,26 @@
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
 import { query } from "@/lib/db";
 import { isMailConfigured } from "@/lib/mailer";
 import { isStripeBillingConfigured } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
+async function backupStatus() {
+  const root = process.env.BACKUP_DIR || "/app/backups";
+  try {
+    const metadata = await stat(join(root, "latest", "metadata.txt"));
+    const ageHours = Math.max(0, (Date.now() - metadata.mtimeMs) / 3_600_000);
+    return { available: true, fresh: ageHours <= 36, ageHours: Number(ageHours.toFixed(1)) };
+  } catch {
+    return { available: false, fresh: false, ageHours: null as number | null };
+  }
+}
+
 export async function GET() {
   const mailConfigured = isMailConfigured();
   const billingConfigured = isStripeBillingConfigured();
+  const backup = await backupStatus();
   try {
     const result = await query<{
       workspaces: boolean;
@@ -14,6 +28,7 @@ export async function GET() {
       workspace_invites: boolean;
       password_reset_tokens: boolean;
       email_verification_tokens: boolean;
+      action_rate_limits: boolean;
       stripe_events: boolean;
       billing_consents: boolean;
       cancellation_requests: boolean;
@@ -36,6 +51,7 @@ export async function GET() {
         to_regclass('public.workspace_invites') IS NOT NULL AS workspace_invites,
         to_regclass('public.password_reset_tokens') IS NOT NULL AS password_reset_tokens,
         to_regclass('public.email_verification_tokens') IS NOT NULL AS email_verification_tokens,
+        to_regclass('public.action_rate_limits') IS NOT NULL AS action_rate_limits,
         to_regclass('public.stripe_events') IS NOT NULL AS stripe_events,
         to_regclass('public.billing_consents') IS NOT NULL AS billing_consents,
         to_regclass('public.cancellation_requests') IS NOT NULL AS cancellation_requests,
@@ -59,6 +75,7 @@ export async function GET() {
       schema.workspace_invites &&
       schema.password_reset_tokens &&
       schema.email_verification_tokens &&
+      schema.action_rate_limits &&
       schema.stripe_events &&
       schema.billing_consents &&
       schema.cancellation_requests &&
@@ -75,9 +92,10 @@ export async function GET() {
       schema.subscription_status_column &&
       schema.document_size_column
     );
-    return Response.json({ ok, service: "navopass", version: "0.5.0", database: true, mailConfigured, billingConfigured, schema }, { status: ok ? 200 : 503 });
+    const productionReady = Boolean(ok && mailConfigured && billingConfigured && backup.fresh);
+    return Response.json({ ok, productionReady, service: "navopass", version: "1.0.0", database: true, mailConfigured, billingConfigured, backup, schema }, { status: ok ? 200 : 503 });
   } catch (error) {
     console.error("NavoPass health check failed", error);
-    return Response.json({ ok: false, service: "navopass", version: "0.5.0", database: false, mailConfigured, billingConfigured, schema: null }, { status: 503 });
+    return Response.json({ ok: false, productionReady: false, service: "navopass", version: "1.0.0", database: false, mailConfigured, billingConfigured, backup, schema: null }, { status: 503 });
   }
 }

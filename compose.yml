@@ -33,7 +33,9 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
       APP_URL: ${APP_URL:-https://navopass.de}
       UPLOAD_DIR: /app/uploads
+      BACKUP_DIR: /app/backups
       NODE_ENV: production
+      RATE_LIMIT_SECRET: ${RATE_LIMIT_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
@@ -51,17 +53,54 @@ services:
       STRIPE_PRICE_BUSINESS_YEARLY: ${STRIPE_PRICE_BUSINESS_YEARLY:-}
     volumes:
       - navopass-uploads:/app/uploads
+      - navopass-backups:/app/backups:ro
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       backend:
       kamilunavo_frontend:
         aliases:
           - navopass
 
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: navopass
+      DB_USER: navopass
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
+      UPLOAD_SOURCE: /source/uploads
+      BACKUP_ROOT: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - navopass-uploads:/source/uploads
+      - navopass-backups:/backups
+      - ./scripts:/scripts:ro
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo '17 3 * * * /bin/sh /scripts/backup.sh >> /proc/1/fd/1 2>> /proc/1/fd/2' > /etc/crontabs/root
+        /bin/sh /scripts/backup.sh
+        exec crond -f -l 2
+    networks:
+      - backend
+
 volumes:
   navopass-db:
   navopass-uploads:
+  navopass-backups:
 
 networks:
   backend:

@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { KLEINUNTERNEHMER_NOTICE } from "@/lib/legal";
 import { brandedMail, escapeHtml, isMailConfigured, sendMail } from "@/lib/mailer";
 import { PLAN_CONFIG, formatEuro, type Plan } from "@/lib/plan-config";
 import { appUrl, type BillingInterval } from "@/lib/stripe";
@@ -41,6 +42,7 @@ export async function sendContractConfirmation(consentId: string, checkoutSessio
   const details = [
     `Tarif: NavoPass ${definition.name}`,
     `Preis: ${formatEuro(amount)} ${yearly ? "pro Jahr" : "pro Monat"}`,
+    KLEINUNTERNEHMER_NOTICE,
     `Abrechnung: ${cadence} im Voraus; fortlaufend bis zur Kündigung`,
     `Ordentliche Kündigung: zum Ende des laufenden Abrechnungszeitraums`,
     `Tariflimits: ${definition.maxAssets} Pässe, ${definition.maxSeats} Nutzer, ${definition.maxStorageBytes} Bytes Speicher`,
