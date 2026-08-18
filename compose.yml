@@ -33,6 +33,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
       APP_URL: ${APP_URL:-https://navopass.de}
       UPLOAD_DIR: /app/uploads
+      BACKUP_DIR: /app/backups
       NODE_ENV: production
       RATE_LIMIT_SECRET: ${RATE_LIMIT_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -52,6 +53,7 @@ services:
       STRIPE_PRICE_BUSINESS_YEARLY: ${STRIPE_PRICE_BUSINESS_YEARLY:-}
     volumes:
       - navopass-uploads:/app/uploads
+      - navopass-backups:/app/backups:ro
     expose:
       - "3000"
     healthcheck:
