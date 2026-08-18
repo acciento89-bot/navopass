@@ -69,7 +69,9 @@ services:
           - navopass
 
   backup:
-    image: postgres:17-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
     restart: unless-stopped
     depends_on:
       db:
@@ -86,13 +88,12 @@ services:
     volumes:
       - navopass-uploads:/source/uploads
       - navopass-backups:/backups
-      - ./scripts:/scripts:ro
     command:
       - /bin/sh
       - -c
       - |
-        echo '17 3 * * * /bin/sh /scripts/backup.sh >> /proc/1/fd/1 2>> /proc/1/fd/2' > /etc/crontabs/root
-        /bin/sh /scripts/backup.sh
+        echo '17 3 * * * /usr/local/bin/navopass-backup >> /proc/1/fd/1 2>> /proc/1/fd/2' > /etc/crontabs/root
+        /usr/local/bin/navopass-backup
         exec crond -f -l 2
     networks:
       - backend

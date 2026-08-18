@@ -41,6 +41,9 @@ jobs:
           sh -n scripts/backup.sh
           sh -n scripts/restore-backup.sh
           docker compose config >/dev/null
+          docker build -f Dockerfile.backup -t navopass-backup-ci .
+          docker run --rm navopass-backup-ci test -x /usr/local/bin/navopass-backup
+          docker run --rm navopass-backup-ci test -x /usr/local/bin/navopass-restore
       - run: npm run typecheck
       - run: npm run test:unit
       - run: npm run build

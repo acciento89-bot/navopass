@@ -1,0 +1,6 @@
+FROM postgres:17-alpine
+
+COPY scripts/backup.sh /usr/local/bin/navopass-backup
+COPY scripts/restore-backup.sh /usr/local/bin/navopass-restore
+
+RUN chmod 0755 /usr/local/bin/navopass-backup /usr/local/bin/navopass-restore
