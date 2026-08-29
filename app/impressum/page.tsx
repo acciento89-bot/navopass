@@ -38,7 +38,9 @@ export default function ImprintPage() {
 
           <section>
             <h2>Register und Identifikationsnummern</h2>
-            <p>Es besteht derzeit kein Handelsregistereintrag. Eine Umsatzsteuer-Identifikationsnummer nach § 27a UStG und eine deutsche Wirtschafts-Identifikationsnummer wurden derzeit nicht erteilt.</p>
+            <p>Es besteht derzeit kein Handelsregistereintrag.</p>
+            <p>Wirtschafts-Identifikationsnummer gemäß § 139c AO: <strong>DE464473083-00001</strong></p>
+            <p>Eine Umsatzsteuer-Identifikationsnummer nach § 27a UStG wurde derzeit nicht erteilt.</p>
           </section>
 
           <section>
@@ -58,7 +60,7 @@ export default function ImprintPage() {
             <Link href="/preise">Preise</Link>
             <Link href="/kontakt">Kontakt</Link>
           </nav>
-          <p className={styles.meta}>Stand: 15. August 2026</p>
+          <p className={styles.meta}>Stand: 29. August 2026</p>
         </article>
       </main>
     </PublicShell>
