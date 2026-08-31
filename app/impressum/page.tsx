@@ -27,9 +27,10 @@ export default function ImprintPage() {
 
           <section>
             <h2>Kontakt</h2>
-            <p>E-Mail: <a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a></p>
+            <p>E-Mail: <a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a><br />Telefon: <a href="tel:+4915114082801">+49 151 14082801</a></p>
             <div className={styles.methods}>
               <div className={styles.method}><span>Direkter Kontakt</span><a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a></div>
+              <div className={styles.method}><span>Telefon</span><a href="tel:+4915114082801">+49 151 14082801</a></div>
               <div className={styles.method}><span>Weitere elektronische Kontaktmöglichkeit</span><b>Kontaktformular unten</b></div>
             </div>
             <p>Alternativ kann das folgende Kontaktformular verwendet werden. Es bereitet eine Nachricht an <a href="mailto:support@kamilunavo.com">support@kamilunavo.com</a> vor.</p>
@@ -60,7 +61,7 @@ export default function ImprintPage() {
             <Link href="/preise">Preise</Link>
             <Link href="/kontakt">Kontakt</Link>
           </nav>
-          <p className={styles.meta}>Stand: 29. August 2026</p>
+          <p className={styles.meta}>Stand: 31. August 2026</p>
         </article>
       </main>
     </PublicShell>
