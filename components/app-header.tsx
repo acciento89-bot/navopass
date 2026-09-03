@@ -17,6 +17,7 @@ export function AppHeader({ name }: { name: string }) {
         <details style={{ position: "relative" }}>
           <summary className="app-nav-link" style={{ cursor: "pointer", listStyle: "none" }}>Mehr ▾</summary>
           <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", minWidth: 190, padding: 8, display: "grid", gap: 2, background: "#fff", border: "1px solid #dce8ef", borderRadius: 14, boxShadow: "0 18px 44px rgba(24,55,75,.14)", zIndex: 100 }}>
+            <Link href="/app/kunden" className="app-nav-link">Kunden & Standorte</Link>
             <Link href="/app/team" className="app-nav-link">Bereiche</Link>
             <Link href="/app/profil" className="app-nav-link">Profil</Link>
             <Link href="/app/sticker" className="app-nav-link">QR-Aufkleber</Link>
