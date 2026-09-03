@@ -44,6 +44,7 @@ function requestedEndLabel(mode: EndMode, date: string | null) {
 }
 
 export async function submitCancellationAction(formData: FormData) {
+  const en = value(formData, "locale", 2) === "en";
   const honeypot = value(formData, "companyWebsite", 200);
   if (honeypot) redirect("/vertrag-kuendigen?received=1");
 
@@ -56,9 +57,9 @@ export async function submitCancellationAction(formData: FormData) {
   const endMode: EndMode = rawEndMode === "IMMEDIATE" ? "IMMEDIATE" : rawEndMode === "DATE" ? "DATE" : "NEXT_POSSIBLE";
   const requestedDate = endMode === "DATE" ? value(formData, "requestedEndDate", 20) : "";
 
-  if (!email.includes("@") || email.startsWith("@") || email.endsWith("@")) fail("Bitte gib die E-Mail-Adresse deines NavoPass-Vertrags an.");
-  if (kind === "EXTRAORDINARY" && reason.length < 3) fail("Bitte gib bei einer außerordentlichen Kündigung den Kündigungsgrund an.");
-  if (endMode === "DATE" && !validDate(requestedDate)) fail("Bitte gib ein gültiges gewünschtes Beendigungsdatum an.");
+  if (!email.includes("@") || email.startsWith("@") || email.endsWith("@")) fail(en ? "Please enter the email address for your NavoPass contract." : "Bitte gib die E-Mail-Adresse deines NavoPass-Vertrags an.");
+  if (kind === "EXTRAORDINARY" && reason.length < 3) fail(en ? "Please state the reason for an extraordinary cancellation." : "Bitte gib bei einer außerordentlichen Kündigung den Kündigungsgrund an.");
+  if (endMode === "DATE" && !validDate(requestedDate)) fail(en ? "Please enter a valid requested end date." : "Bitte gib ein gültiges gewünschtes Beendigungsdatum an.");
 
   const account = await query<{ id: string; stripe_subscription_id: string | null; subscription_status: string | null }>(
     `SELECT id,stripe_subscription_id,subscription_status FROM users WHERE lower(email)=lower($1) LIMIT 1`,
@@ -80,7 +81,7 @@ export async function submitCancellationAction(formData: FormData) {
   const requestId = inserted.rows[0].id;
   const requestedAt = new Date(inserted.rows[0].requested_at);
   let processingStatus = "RECEIVED";
-  let processingNote = "Die Kündigungserklärung ist eingegangen und wird anhand des Vertrags geprüft.";
+  let processingNote = en ? "Your cancellation notice has been received and will be reviewed against the contract." : "Die Kündigungserklärung ist eingegangen und wird anhand des Vertrags geprüft.";
 
   if (user?.stripe_subscription_id && kind === "ORDINARY" && endMode === "NEXT_POSSIBLE") {
     try {
@@ -88,22 +89,22 @@ export async function submitCancellationAction(formData: FormData) {
       const periodEnd = formatDate(subscriptionPeriodEnd(updated));
       processingStatus = "SCHEDULED";
       processingNote = periodEnd
-        ? `Das Stripe-Abonnement wurde zum Ende des laufenden Abrechnungszeitraums am ${periodEnd} zur Beendigung vorgemerkt.`
-        : "Das Stripe-Abonnement wurde zum Ende des laufenden Abrechnungszeitraums zur Beendigung vorgemerkt.";
+        ? (en ? `The Stripe subscription has been scheduled to end at the close of the current billing period on ${periodEnd}.` : `Das Stripe-Abonnement wurde zum Ende des laufenden Abrechnungszeitraums am ${periodEnd} zur Beendigung vorgemerkt.`)
+        : (en ? "The Stripe subscription has been scheduled to end at the close of the current billing period." : "Das Stripe-Abonnement wurde zum Ende des laufenden Abrechnungszeitraums zur Beendigung vorgemerkt.");
     } catch (error) {
       console.error("NavoPass automatic cancellation scheduling failed", { requestId, error });
       processingStatus = "REVIEW_REQUIRED";
-      processingNote = "Die Kündigungserklärung ist wirksam eingegangen. Die automatische Vormerkung konnte technisch nicht abgeschlossen werden und wird manuell geprüft.";
+      processingNote = en ? "Your cancellation notice has been received. Automatic scheduling could not be completed and will be reviewed manually." : "Die Kündigungserklärung ist wirksam eingegangen. Die automatische Vormerkung konnte technisch nicht abgeschlossen werden und wird manuell geprüft.";
     }
   } else if (!user?.stripe_subscription_id) {
     processingStatus = "REVIEW_REQUIRED";
-    processingNote = "Die Kündigungserklärung ist eingegangen. Es konnte kein aktives Stripe-Abonnement automatisch zugeordnet werden; die Zuordnung wird geprüft.";
+    processingNote = en ? "Your cancellation notice has been received. No active Stripe subscription could be matched automatically; the association will be reviewed." : "Die Kündigungserklärung ist eingegangen. Es konnte kein aktives Stripe-Abonnement automatisch zugeordnet werden; die Zuordnung wird geprüft.";
   } else if (kind === "EXTRAORDINARY") {
     processingStatus = "REVIEW_REQUIRED";
-    processingNote = "Die außerordentliche Kündigungserklärung ist eingegangen und wird einschließlich des angegebenen Grundes geprüft.";
+    processingNote = en ? "Your extraordinary cancellation notice has been received and will be reviewed together with the reason provided." : "Die außerordentliche Kündigungserklärung ist eingegangen und wird einschließlich des angegebenen Grundes geprüft.";
   } else {
     processingStatus = "REVIEW_REQUIRED";
-    processingNote = "Die Kündigungserklärung mit dem gewünschten Beendigungszeitpunkt ist eingegangen und wird geprüft.";
+    processingNote = en ? "Your cancellation notice with the requested end date has been received and will be reviewed." : "Die Kündigungserklärung mit dem gewünschten Beendigungszeitpunkt ist eingegangen und wird geprüft.";
   }
 
   await query(

@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
 import styles from "@/app/public-pages.module.css";
+import { EnglishTerms } from "@/components/legal-english";
+import { getLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Nutzungsbedingungen",
   description: "Nutzungsbedingungen für den digitalen Dienst NavoPass.",
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  if (await getLocale() === "en") return <EnglishTerms />;
   return (
     <PublicShell>
       <main className={styles.main}>

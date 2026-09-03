@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
 import styles from "@/app/public-pages.module.css";
+import { EnglishPrivacy } from "@/components/legal-english";
+import { getLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Datenschutz",
   description: "Datenschutzerklärung für NavoPass.",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  if (await getLocale() === "en") return <EnglishPrivacy />;
   return (
     <PublicShell>
       <main className={styles.main}>
