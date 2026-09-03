@@ -9,6 +9,23 @@ import { canExecuteBusinessServiceJob } from "@/lib/entitlements";
 
 const EVENT_TYPES = new Set(["SERVICE", "REPAIR", "INSPECTION", "NOTE"]);
 
+type ReportSnapshot = {
+  asset_name: string;
+  asset_category: string;
+  asset_manufacturer: string | null;
+  asset_model: string | null;
+  asset_serial_number: string | null;
+  asset_location: string | null;
+  asset_public_id: string;
+  customer_name: string | null;
+  customer_contact_name: string | null;
+  customer_email: string | null;
+  customer_street: string | null;
+  customer_postal_code: string | null;
+  customer_city: string | null;
+  customer_country: string | null;
+};
+
 function text(formData: FormData, key: string, max = 1000) {
   const value = String(formData.get(key) ?? "").trim().slice(0, max);
   return value || null;
@@ -51,12 +68,43 @@ export async function recordServiceEntryAction(formData: FormData) {
 
   try {
     eventId = await transaction(async (client) => {
+      const snapshot = (await client.query<ReportSnapshot>(
+        `SELECT a.name AS asset_name,a.category AS asset_category,a.manufacturer AS asset_manufacturer,
+                a.model AS asset_model,a.serial_number AS asset_serial_number,a.location AS asset_location,
+                a.public_id AS asset_public_id,c.name AS customer_name,c.contact_name AS customer_contact_name,
+                c.email AS customer_email,c.street AS customer_street,c.postal_code AS customer_postal_code,
+                c.city AS customer_city,c.country AS customer_country
+           FROM assets a
+           LEFT JOIN service_jobs j
+             ON j.id=$2::uuid AND j.asset_id=a.id AND (j.user_id=$3 OR j.assigned_user_id=$3)
+           LEFT JOIN service_customers c
+             ON c.id=CASE WHEN j.id IS NOT NULL THEN j.customer_id ELSE a.service_customer_id END
+            AND (j.id IS NOT NULL OR c.user_id=$3)
+          WHERE a.id=$1
+          LIMIT 1`,
+        [asset.id, jobId, user.id]
+      )).rows[0];
+      if (!snapshot) throw new Error("Report snapshot source missing");
+
       const inserted = await client.query<{ id: string }>(
         `INSERT INTO asset_events
-          (asset_id,title,event_type,event_date,description,provider,cost_cents,is_public,created_by_user_id,created_by_name,labor_minutes,parts_used,measurements,findings,recommendation,customer_name,customer_signature,customer_signed_at)
-         VALUES ($1,$2,$3,COALESCE($4::date,current_date),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,CASE WHEN $17::text IS NOT NULL THEN now() ELSE NULL END)
+          (asset_id,title,event_type,event_date,description,provider,cost_cents,is_public,created_by_user_id,created_by_name,
+           labor_minutes,parts_used,measurements,findings,recommendation,customer_name,customer_signature,customer_signed_at,
+           report_asset_name,report_asset_category,report_asset_manufacturer,report_asset_model,report_asset_serial_number,
+           report_asset_location,report_asset_public_id,report_customer_name,report_customer_contact_name,report_customer_email,
+           report_customer_street,report_customer_postal_code,report_customer_city,report_customer_country)
+         VALUES ($1,$2,$3,COALESCE($4::date,current_date),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+                 CASE WHEN $17::text IS NOT NULL THEN now() ELSE NULL END,
+                 $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
          RETURNING id`,
-        [asset.id,title,eventType,eventDate,description,provider,costCents,isPublic,user.id,user.name,laborMinutes,partsUsed,measurements,findings,recommendation,customerName,customerSignature]
+        [
+          asset.id,title,eventType,eventDate,description,provider,costCents,isPublic,user.id,user.name,
+          laborMinutes,partsUsed,measurements,findings,recommendation,customerName,customerSignature,
+          snapshot.asset_name,snapshot.asset_category,snapshot.asset_manufacturer,snapshot.asset_model,
+          snapshot.asset_serial_number,snapshot.asset_location,snapshot.asset_public_id,snapshot.customer_name,
+          snapshot.customer_contact_name,snapshot.customer_email,snapshot.customer_street,snapshot.customer_postal_code,
+          snapshot.customer_city,snapshot.customer_country,
+        ]
       );
       const newEventId = inserted.rows[0].id;
       if (advanceService) {
