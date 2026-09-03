@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
-import { getDocuments, getEvents, getOwnedAsset, roleCanEdit } from "@/lib/assets";
+import { getDocuments, getEvents, getOwnedAsset, roleCanEdit, roleCanManage } from "@/lib/assets";
+import { listPendingServiceInvites, listServiceGrants } from "@/lib/service-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const asset = await getOwnedAsset(user.id, id);
   if (!asset) return response({ error: "NOT_FOUND" }, 404);
-  const [events, documents] = await Promise.all([getEvents(asset.id), getDocuments(asset.id)]);
-  return response({ asset, events, documents, permissions: { canEdit: roleCanEdit(asset, user.id) } });
+  const canManage = roleCanManage(asset, user.id);
+  const [events, documents, grants, invites] = await Promise.all([
+    getEvents(asset.id),
+    getDocuments(asset.id),
+    canManage ? listServiceGrants(asset.id) : Promise.resolve([]),
+    canManage ? listPendingServiceInvites(asset.id) : Promise.resolve([]),
+  ]);
+  return response({ asset, events, documents, serviceAccess: { grants, invites }, permissions: { canEdit: roleCanEdit(asset, user.id), canManage } });
 }
-
