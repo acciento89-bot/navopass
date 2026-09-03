@@ -23,7 +23,7 @@ export const SCHEMA_STATEMENTS = [
    END $$`,
   `DO $$ BEGIN
      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_account_type_check') THEN
-       ALTER TABLE users ADD CONSTRAINT users_account_type_check CHECK (account_type IN ('PRIVATE','COMPANY','TECHNICIAN','SERVICE_COMPANY'));
+       ALTER TABLE users ADD CONSTRAINT users_account_type_check CHECK (account_type IN ('PRIVATE','PROFESSIONAL'));
      END IF;
    END $$`,
   `CREATE TABLE IF NOT EXISTS sessions (
