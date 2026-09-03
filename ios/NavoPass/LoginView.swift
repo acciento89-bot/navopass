@@ -6,41 +6,91 @@ struct LoginView: View {
     @State private var password = ""
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            NavoBackground()
             ScrollView {
-                VStack(spacing: 24) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 58))
-                        .foregroundStyle(.tint)
-                    VStack(spacing: 8) {
-                        Text("NavoPass").font(.largeTitle.bold())
+                VStack(spacing: 26) {
+                    VStack(spacing: 16) {
+                        Image(systemName: "checkmark.shield.fill")
+                            .font(.system(size: 46, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 88, height: 88)
+                            .background(
+                                LinearGradient(colors: [NavoTheme.accent, NavoTheme.accentDeep], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                in: RoundedRectangle(cornerRadius: 27, style: .continuous)
+                            )
+                            .shadow(color: NavoTheme.accent.opacity(0.28), radius: 24, y: 12)
+                        Text("NavoPass")
+                            .font(.system(.largeTitle, design: .rounded, weight: .bold))
                         Text("Your digital passes. Securely available wherever you need them.")
-                            .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    VStack(spacing: 14) {
-                        TextField("Email address", text: $email)
-                            .textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never)
-                        SecureField("Password", text: $password).textContentType(.password)
+
+                    VStack(spacing: 16) {
+                        Label {
+                            TextField("Email address", text: $email)
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .textInputAutocapitalization(.never)
+                                .submitLabel(.next)
+                        } icon: {
+                            Image(systemName: "envelope.fill").foregroundStyle(NavoTheme.accent)
+                        }
+                        .padding(.horizontal, 16).frame(minHeight: 56)
+                        .background(NavoTheme.elevatedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                        Label {
+                            SecureField("Password", text: $password)
+                                .textContentType(.password)
+                                .submitLabel(.go)
+                                .onSubmit { signIn() }
+                        } icon: {
+                            Image(systemName: "lock.fill").foregroundStyle(NavoTheme.accent)
+                        }
+                        .padding(.horizontal, 16).frame(minHeight: 56)
+                        .background(NavoTheme.elevatedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                    .textFieldStyle(.roundedBorder)
+                    .navoCard()
+
                     if let message = api.errorMessage {
-                        Text(message).foregroundStyle(.red).font(.callout)
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     Button {
-                        Task { await api.signIn(email: email, password: password) }
+                        signIn()
                     } label: {
                         Group { if api.isLoading { ProgressView() } else { Text("Sign in").bold() } }
-                            .frame(maxWidth: .infinity).frame(height: 30)
+                            .frame(maxWidth: .infinity).frame(minHeight: 54)
                     }
                     .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle(radius: 17))
+                    .tint(NavoTheme.accent)
                     .disabled(email.isEmpty || password.isEmpty || api.isLoading)
+
                     Link("Create an account on navopass.de", destination: URL(string: "https://navopass.de/register")!)
-                        .font(.callout)
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("Kamilunavo · Privacy by design")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
-                .padding(28).frame(maxWidth: 520)
+                .padding(.horizontal, 24)
+                .padding(.top, 46)
+                .padding(.bottom, 30)
+                .frame(maxWidth: 520)
+                .frame(maxWidth: .infinity)
             }
-            .safeAreaInset(edge: .bottom) { Text("Kamilunavo · Privacy by design").font(.caption).foregroundStyle(.secondary).padding() }
+            .scrollDismissesKeyboard(.interactively)
         }
     }
-}
 
+    private func signIn() {
+        guard !email.isEmpty, !password.isEmpty, !api.isLoading else { return }
+        Task { await api.signIn(email: email, password: password) }
+    }
+}

@@ -26,11 +26,15 @@ struct MainTabView: View {
         TabView {
             NavigationStack { AssetListView() }
                 .tabItem { Label("Passes", systemImage: "square.stack.3d.up.fill") }
+            NavigationStack { PortalTabView(destination: .service) }
+                .tabItem { Label("Service", systemImage: "wrench.and.screwdriver.fill") }
             NavigationStack { ScannerScreen() }
                 .tabItem { Label("Scan", systemImage: "qrcode.viewfinder") }
-            NavigationStack { AccountView() }
-                .tabItem { Label("Account", systemImage: "person.crop.circle") }
+            NavigationStack { PortalTabView(destination: .notifications) }
+                .tabItem { Label("Alerts", systemImage: "bell.badge.fill") }
+            NavigationStack { MoreView() }
+                .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
         }
+        .tint(NavoTheme.accent)
     }
 }
-
