@@ -12,6 +12,10 @@ struct AssetListView: View {
         }
     }
 
+    private var sharedCount: Int {
+        filtered.filter { $0.visibility != "PRIVATE" }.count
+    }
+
     var body: some View {
         ZStack {
             NavoBackground()
@@ -21,7 +25,7 @@ struct AssetListView: View {
                     HStack(spacing: 10) {
                         StatTile(value: "\(filtered.count)", label: "Active")
                         StatTile(value: "\(filtered.filter { $0.favorite }.count)", label: "Favourites")
-                        StatTile(value: "\(filtered.filter { $0.visibility != \"PRIVATE\" }.count)", label: "Shared")
+                        StatTile(value: "\(sharedCount)", label: "Shared")
                     }
                     HStack(spacing: 11) {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
