@@ -13,9 +13,17 @@ export const SCHEMA_STATEMENTS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_acknowledged_at timestamptz`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'FREE'`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type text NOT NULL DEFAULT 'PRIVATE'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name text`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS professional_title text`,
   `DO $$ BEGIN
      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_plan_check') THEN
        ALTER TABLE users ADD CONSTRAINT users_plan_check CHECK (plan IN ('FREE','PLUS','FAMILY','BUSINESS'));
+     END IF;
+   END $$`,
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_account_type_check') THEN
+       ALTER TABLE users ADD CONSTRAINT users_account_type_check CHECK (account_type IN ('PRIVATE','PROFESSIONAL'));
      END IF;
    END $$`,
   `CREATE TABLE IF NOT EXISTS sessions (
@@ -149,7 +157,10 @@ export const SCHEMA_STATEMENTS = [
     is_public boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS created_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL`,
+  `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS created_by_name text`,
   `CREATE INDEX IF NOT EXISTS asset_events_asset_id_idx ON asset_events(asset_id)`,
+  `CREATE INDEX IF NOT EXISTS asset_events_created_by_idx ON asset_events(created_by_user_id)`,
   `CREATE TABLE IF NOT EXISTS asset_documents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
