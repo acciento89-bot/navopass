@@ -26,15 +26,16 @@ struct MainTabView: View {
         TabView {
             NavigationStack { AssetListView() }
                 .tabItem { Label("Passes", systemImage: "square.stack.3d.up.fill") }
-            NavigationStack { PortalTabView(destination: .service) }
+            NavigationStack { ServiceCenterView() }
                 .tabItem { Label("Service", systemImage: "wrench.and.screwdriver.fill") }
             NavigationStack { ScannerScreen() }
                 .tabItem { Label("Scan", systemImage: "qrcode.viewfinder") }
-            NavigationStack { PortalTabView(destination: .notifications) }
+            NavigationStack { AlertsView() }
                 .tabItem { Label("Alerts", systemImage: "bell.badge.fill") }
             NavigationStack { MoreView() }
                 .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
         }
         .tint(NavoTheme.accent)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }
