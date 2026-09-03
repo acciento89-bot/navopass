@@ -42,7 +42,7 @@ export async function recordServiceEntryAction(formData: FormData) {
   const asset = await getOwnedAsset(user.id, assetId);
   if (!asset || asset.archived_at || !roleCanRecordService(asset, user.id)) redirect("/app?error=Keine%20Berechtigung%20fuer%20diesen%20Pass");
   if (jobId && !await canExecuteBusinessServiceJob(user.id, jobId, asset.id)) {
-    redirect(`/app/auftraege?error=${encodeURIComponent("Dieser Serviceauftrag ist nicht durch einen aktiven Business-Tarif freigeschaltet.")}`);
+    redirect(`/app/auftraege?error=${encodeURIComponent("Dieser Einsatz ist nicht durch einen aktiven Business-Tarif freigeschaltet.")}`);
   }
 
   const rawType = text(formData, "eventType", 40) ?? "SERVICE";
@@ -68,6 +68,18 @@ export async function recordServiceEntryAction(formData: FormData) {
 
   try {
     eventId = await transaction(async (client) => {
+      if (jobId) {
+        const lockedJob = await client.query<{ id: string }>(
+          `SELECT id
+             FROM service_jobs
+            WHERE id=$1 AND asset_id=$2 AND (user_id=$3 OR assigned_user_id=$3)
+              AND status IN ('OPEN','IN_PROGRESS')
+            FOR UPDATE`,
+          [jobId, asset.id, user.id]
+        );
+        if (!lockedJob.rows[0]) throw new Error("Linked job is no longer active");
+      }
+
       const snapshot = (await client.query<ReportSnapshot>(
         `SELECT a.name AS asset_name,a.category AS asset_category,a.manufacturer AS asset_manufacturer,
                 a.model AS asset_model,a.serial_number AS asset_serial_number,a.location AS asset_location,
@@ -79,7 +91,7 @@ export async function recordServiceEntryAction(formData: FormData) {
              ON j.id=$2::uuid AND j.asset_id=a.id AND (j.user_id=$3 OR j.assigned_user_id=$3)
            LEFT JOIN service_customers c
              ON c.id=CASE WHEN j.id IS NOT NULL THEN j.customer_id ELSE a.service_customer_id END
-            AND (j.id IS NOT NULL OR c.user_id=$3)
+            AND ((j.id IS NOT NULL AND c.user_id=j.user_id) OR (j.id IS NULL AND c.user_id=$3))
           WHERE a.id=$1
           LIMIT 1`,
         [asset.id, jobId, user.id]
@@ -119,17 +131,18 @@ export async function recordServiceEntryAction(formData: FormData) {
         [asset.id,newEventId]
       );
       if (jobId) {
-        await client.query(
+        const completed = await client.query(
           `UPDATE service_jobs SET status='DONE',completed_event_id=$1,completed_at=now(),updated_at=now()
             WHERE id=$2 AND (user_id=$3 OR assigned_user_id=$3) AND asset_id=$4 AND status IN ('OPEN','IN_PROGRESS')`,
           [newEventId,jobId,user.id,asset.id]
         );
+        if (completed.rowCount !== 1) throw new Error("Linked job completion failed");
       }
       return newEventId;
     });
   } catch (error) {
     console.error("NavoPass service entry failed", { assetId: asset.id, userId: user.id, error });
-    redirect(`/app/assets/${asset.id}/service?error=${encodeURIComponent("Eintrag konnte nicht gespeichert werden.")}`);
+    redirect(`/app/assets/${asset.id}/service?error=${encodeURIComponent("Eintrag konnte nicht gespeichert werden. Ein verknüpfter Einsatz wurde möglicherweise bereits geändert oder abgeschlossen.")}`);
   }
 
   revalidatePath("/app");
