@@ -71,10 +71,12 @@ struct AssetDraft: Encodable {
     var manufacturer = ""
     var model = ""
     var serialNumber = ""
+    var purchaseDate = ""
+    var warrantyUntil = ""
+    var nextServiceDate = ""
     var location = ""
     var notes = ""
     var visibility = "LINK"
     var workspaceId: String?
     var serviceIntervalMonths = 12
 }
-
