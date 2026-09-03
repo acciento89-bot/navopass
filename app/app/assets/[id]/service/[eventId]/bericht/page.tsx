@@ -74,7 +74,6 @@ export default async function ServiceReportPage({ params }: { params: Promise<{ 
   const customerAddress = customer
     ? [customer.street, [customer.postal_code, customer.city].filter(Boolean).join(" "), customer.country].filter(Boolean).join(", ")
     : "";
-  const company = user.account_type === "PROFESSIONAL" ? user.company_name : null;
   const reportNumber = `NP-${event.id.slice(0, 8).toUpperCase()}`;
 
   return <main className={styles.page}>
@@ -117,8 +116,7 @@ export default async function ServiceReportPage({ params }: { params: Promise<{ 
             <div><dt>Kunde / Standort</dt><dd>{customer?.name || "—"}</dd></div>
             <div><dt>Ansprechpartner</dt><dd>{customer?.contact_name || "—"}</dd></div>
             <div><dt>Adresse</dt><dd>{customerAddress || "—"}</dd></div>
-            <div><dt>Firma</dt><dd>{company || "—"}</dd></div>
-            <div><dt>Techniker</dt><dd>{event.created_by_name || user.name}</dd></div>
+            <div><dt>Techniker / Konto</dt><dd>{event.created_by_name || "—"}</dd></div>
             <div><dt>Ausgeführt durch</dt><dd>{event.provider || "—"}</dd></div>
             <div><dt>Kosten</dt><dd>{money(event.cost_cents)}</dd></div>
           </dl>
@@ -137,7 +135,7 @@ export default async function ServiceReportPage({ params }: { params: Promise<{ 
 
       <footer className={styles.footer}>
         <span>Digital aus der NavoPass-Servicehistorie erzeugt · {reportNumber}</span>
-        <span>Erstellt am {new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}</span>
+        <span>Gespeichert am {new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at))}</span>
       </footer>
     </article>
   </main>;
