@@ -21,11 +21,6 @@ const priceEnv: Record<Exclude<Plan, "FREE">, Record<BillingInterval, string>> =
   },
 };
 
-const legacyBusinessPriceEnv: Record<BillingInterval, string> = {
-  monthly: process.env.STRIPE_PRICE_BUSINESS_LEGACY_MONTHLY?.trim() || "",
-  yearly: process.env.STRIPE_PRICE_BUSINESS_LEGACY_YEARLY?.trim() || "",
-};
-
 let stripeClient: Stripe | null = null;
 
 export function getStripe() {
@@ -77,7 +72,6 @@ export function planForPriceId(priceId: string | null | undefined): Exclude<Plan
   for (const plan of ["PLUS", "FAMILY", "BUSINESS"] as const) {
     if (priceEnv[plan].monthly === priceId || priceEnv[plan].yearly === priceId) return plan;
   }
-  if (legacyBusinessPriceEnv.monthly === priceId || legacyBusinessPriceEnv.yearly === priceId) return "BUSINESS";
   return null;
 }
 
@@ -87,8 +81,6 @@ export function intervalForPriceId(priceId: string | null | undefined): BillingI
     if (priceEnv[plan].monthly === priceId) return "monthly";
     if (priceEnv[plan].yearly === priceId) return "yearly";
   }
-  if (legacyBusinessPriceEnv.monthly === priceId) return "monthly";
-  if (legacyBusinessPriceEnv.yearly === priceId) return "yearly";
   return null;
 }
 
