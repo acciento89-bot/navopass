@@ -3,13 +3,12 @@ import { BILLING_SCHEMA_STATEMENTS } from "@/lib/billing-schema";
 import { SCHEMA_STATEMENTS } from "@/lib/schema";
 import { SECURITY_SCHEMA_STATEMENTS } from "@/lib/security-schema";
 import { SERVICE_ACCESS_SCHEMA_STATEMENTS } from "@/lib/service-access-schema";
+import { SERVICE_REPORT_SCHEMA_STATEMENTS } from "@/lib/service-report-schema";
 import { STICKER_ORDER_SCHEMA_STATEMENTS } from "@/lib/sticker-order-schema";
 
-// PostgreSQL DATE (OID 1082) is a calendar day, not a timestamp.
-// Keep it as YYYY-MM-DD to avoid timezone shifts and Date-object crashes.
 types.setTypeParser(1082, (value) => value);
 
-const ALL_SCHEMA_STATEMENTS = [...SCHEMA_STATEMENTS, ...BILLING_SCHEMA_STATEMENTS, ...SECURITY_SCHEMA_STATEMENTS, ...SERVICE_ACCESS_SCHEMA_STATEMENTS, ...STICKER_ORDER_SCHEMA_STATEMENTS] as const;
+const ALL_SCHEMA_STATEMENTS = [...SCHEMA_STATEMENTS, ...BILLING_SCHEMA_STATEMENTS, ...SECURITY_SCHEMA_STATEMENTS, ...SERVICE_ACCESS_SCHEMA_STATEMENTS, ...STICKER_ORDER_SCHEMA_STATEMENTS, ...SERVICE_REPORT_SCHEMA_STATEMENTS] as const;
 
 const globalForDb = globalThis as unknown as {
   navopassPool?: Pool;
@@ -23,24 +22,13 @@ function poolConfig(): PoolConfig {
   const database = process.env.DB_NAME;
 
   if (host && user && password && database) {
-    return {
-      host,
-      port: Number(process.env.DB_PORT || 5432),
-      user,
-      password,
-      database,
-      max: 10,
-    };
+    return { host, port: Number(process.env.DB_PORT || 5432), user, password, database, max: 10 };
   }
 
-  return {
-    connectionString: process.env.DATABASE_URL,
-    max: 10,
-  };
+  return { connectionString: process.env.DATABASE_URL, max: 10 };
 }
 
 export const pool = globalForDb.navopassPool ?? new Pool(poolConfig());
-
 if (process.env.NODE_ENV !== "production") globalForDb.navopassPool = pool;
 
 async function ensureSchema() {
@@ -49,7 +37,6 @@ async function ensureSchema() {
       const client = await pool.connect();
       let locked = false;
       try {
-        // Next.js can start more than one worker. Serialize DDL across workers.
         await client.query("SELECT pg_advisory_lock($1,$2)", [71842, 90411]);
         locked = true;
         await client.query("BEGIN");
@@ -58,11 +45,7 @@ async function ensureSchema() {
             try {
               await client.query(ALL_SCHEMA_STATEMENTS[index]);
             } catch (error) {
-              console.error("NavoPass schema migration failed", {
-                statement: index + 1,
-                preview: ALL_SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120),
-                error,
-              });
+              console.error("NavoPass schema migration failed", { statement: index + 1, preview: ALL_SCHEMA_STATEMENTS[index].replace(/\s+/g, " ").slice(0, 120), error });
               throw error;
             }
           }
@@ -80,7 +63,6 @@ async function ensureSchema() {
       throw error;
     });
   }
-
   await globalForDb.navopassSchemaReady;
 }
 
