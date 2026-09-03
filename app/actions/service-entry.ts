@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { getOwnedAsset, roleCanEdit } from "@/lib/assets";
+import { getOwnedAsset, roleCanRecordService } from "@/lib/assets";
 import { transaction } from "@/lib/db";
 import { canExecuteBusinessServiceJob } from "@/lib/entitlements";
 
@@ -23,7 +23,7 @@ export async function recordServiceEntryAction(formData: FormData) {
   if (!assetId || !title) redirect("/app?error=Serviceeintrag%20unvollstaendig");
 
   const asset = await getOwnedAsset(user.id, assetId);
-  if (!asset || asset.archived_at || !roleCanEdit(asset, user.id)) redirect("/app?error=Keine%20Berechtigung%20fuer%20diesen%20Pass");
+  if (!asset || asset.archived_at || !roleCanRecordService(asset, user.id)) redirect("/app?error=Keine%20Berechtigung%20fuer%20diesen%20Pass");
   if (jobId && !await canExecuteBusinessServiceJob(user.id, jobId, asset.id)) {
     redirect(`/app/auftraege?error=${encodeURIComponent("Dieser Serviceauftrag ist nicht durch einen aktiven Business-Tarif freigeschaltet.")}`);
   }
