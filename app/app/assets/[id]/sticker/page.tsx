@@ -64,7 +64,7 @@ export default async function StickerPage({
       <article className="panel">
         <span className="eyebrow">Hinweis zum Start</span><h2>Produktion über externen Druckpartner</h2>
         <p className="muted">NavoPass produziert keine Etiketten selbst. Die Anfrage wird gesammelt und anschließend über einen externen Druckdienstleister abgewickelt. Deshalb wird mit dem Absenden noch keine kostenpflichtige Bestellung ausgelöst.</p>
-        <div className="form-tip"><b>Aktuell:</b><span>Du sendest eine Bestellanfrage. Preis, Druckfreigabe und Lieferzeit werden separat bestätigt. Sobald ein fester Fulfillment-Partner angebunden ist, kann dieser Schritt automatisiert werden.</span></div>
+        <div className="form-tip"><b>Pro Gerät sinnvoll:</b><span>Ein Aufkleber reicht normalerweise aus. Optional kannst du einen zweiten als Reserve oder für eine zweite gut erreichbare Position am selben Gerät anfragen.</span></div>
       </article>
     </section>
 
@@ -77,7 +77,7 @@ export default async function StickerPage({
         <form action={requestQrStickerOrderAction} className="compact-form">
           <input type="hidden" name="assetId" value={asset.id} />
           <div className="two-cols">
-            <label>Stückzahl<select name="quantity" defaultValue="10"><option value="5">5 Stück</option><option value="10">10 Stück</option><option value="25">25 Stück</option></select></label>
+            <label>Stückzahl<select name="quantity" defaultValue="1"><option value="1">1 Stück</option><option value="2">2 Stück</option></select><small>Maximal 2 Aufkleber pro Objektpass.</small></label>
             <label>Größe<select name="sizeMm" defaultValue="40"><option value="30">30 × 30 mm</option><option value="40">40 × 40 mm</option></select></label>
           </div>
           <label>Ausführung<select name="material" defaultValue="OUTDOOR_MATTE"><option value="OUTDOOR_MATTE">Wetterfest matt</option><option value="OUTDOOR_GLOSS">Wetterfest glänzend</option></select><small>Für Heizungen, Klimageräte, Werkzeuge oder andere technische Anlagen ist die wetterfeste Variante vorgesehen.</small></label>
@@ -92,8 +92,8 @@ export default async function StickerPage({
             <label>Ort<input name="city" autoComplete="address-level2" required maxLength={120} /></label>
           </div>
           <label>Land<select name="country" defaultValue="DE"><option value="DE">Deutschland</option><option value="AT">Österreich</option><option value="CH">Schweiz</option><option value="PL">Polen</option></select></label>
-          <label>Hinweis (optional)<textarea name="note" rows={3} maxLength={1000} placeholder="z. B. mehrere Geräte, besondere Beschriftung oder Rückfrage" /></label>
-          <div className="form-tip"><b>Noch keine Zahlung:</b><span>Durch Absenden wird nur eine verbindliche Anfrage an NavoPass übermittelt. Eine kostenpflichtige Bestellung entsteht erst nach separater Preisbestätigung.</span></div>
+          <label>Hinweis (optional)<textarea name="note" rows={3} maxLength={1000} placeholder="z. B. zweite Position am Gerät oder besondere Rückfrage" /></label>
+          <div className="form-tip"><b>Noch keine Zahlung:</b><span>Durch Absenden wird nur eine Bestellanfrage an NavoPass übermittelt. Eine kostenpflichtige Bestellung entsteht erst nach separater Preisbestätigung.</span></div>
           <button className="button" type="submit">QR-Aufkleber anfragen</button>
         </form>
       </section>

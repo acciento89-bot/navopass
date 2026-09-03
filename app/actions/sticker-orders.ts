@@ -8,7 +8,7 @@ import { query } from "@/lib/db";
 import { brandedMail, escapeHtml, isMailConfigured, sendMail } from "@/lib/mailer";
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL?.trim() || "support@kamilunavo.com";
-const quantities = new Set([5, 10, 25]);
+const quantities = new Set([1, 2]);
 const sizes = new Set([30, 40]);
 const materials = new Set(["OUTDOOR_MATTE", "OUTDOOR_GLOSS"]);
 
@@ -37,7 +37,7 @@ export async function requestQrStickerOrderAction(formData: FormData) {
   const country = text(formData, "country", 2).toUpperCase() || "DE";
   const note = text(formData, "note", 1000) || null;
 
-  if (!quantities.has(quantity)) fail(assetId, "Bitte eine gültige Stückzahl auswählen.");
+  if (!quantities.has(quantity)) fail(assetId, "Pro Objektpass können 1 oder 2 QR-Aufkleber angefragt werden.");
   if (!sizes.has(sizeMm)) fail(assetId, "Bitte eine gültige Aufklebergröße auswählen.");
   if (!materials.has(material)) fail(assetId, "Bitte eine gültige Ausführung auswählen.");
   if (recipientName.length < 2 || street.length < 3 || postalCode.length < 3 || city.length < 2 || country.length !== 2) {
