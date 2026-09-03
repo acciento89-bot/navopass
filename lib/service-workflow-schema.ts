@@ -41,8 +41,10 @@ export const SERVICE_WORKFLOW_SCHEMA_STATEMENTS = [
     token_hash text NOT NULL UNIQUE,
     expires_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
-    opened_at timestamptz
+    opened_at timestamptz,
+    revoked_at timestamptz
   )`,
+  `ALTER TABLE service_report_shares ADD COLUMN IF NOT EXISTS revoked_at timestamptz`,
   `CREATE INDEX IF NOT EXISTS service_report_shares_event_idx ON service_report_shares(event_id,created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS service_report_shares_expiry_idx ON service_report_shares(expires_at)`,
 ] as const;
