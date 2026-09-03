@@ -89,7 +89,7 @@ export async function deleteAccountAction(formData: FormData) {
   const password = text(formData, "password", 500);
   const confirmation = text(formData, "confirmation", 40).toUpperCase();
   const row = await findUserByEmail(user.email);
-  if (confirmation !== "LÖSCHEN" && confirmation !== "LOESCHEN") redirect("/app/settings?deleteError=Bitte%20LOESCHEN%20eingeben");
+  if (confirmation !== "LÖSCHEN" && confirmation !== "LOESCHEN" && confirmation !== "DELETE") redirect("/app/settings?deleteError=Bitte%20L%C3%96SCHEN%20oder%20DELETE%20eingeben");
   if (!row || !(await verifyPassword(password, row.password_hash))) redirect("/app/settings?deleteError=Passwort%20ist%20falsch");
 
   const ownedShared = await query<{ count: number }>(

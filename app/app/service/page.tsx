@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { listAssets } from "@/lib/assets";
 import { ensureCustomerSchema } from "@/lib/customer-schema";
 import { query } from "@/lib/db";
+import { getLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ type AssetCustomer = { id: string; service_customer_id: string | null };
 
 export default async function ServicePage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; customer?: string }> }) {
   const user = await requireUser();
+  const locale = await getLocale();
+  const en = locale === "en";
   const assets = await listAssets(user.id);
   const { success, error, customer } = await searchParams;
   let customers: CustomerOption[] = [];
@@ -32,14 +35,14 @@ export default async function ServicePage({ searchParams }: { searchParams: Prom
     <main className="app-page">
       <div className="container">
         <AppHeader name={user.name} />
-        <div className="page-back"><Link href="/app">← Meine Pässe</Link></div>
+        <div className="page-back"><Link href="/app">← {en ? "My passes" : "Meine Pässe"}</Link></div>
         <section className="service-head">
-          <div><span className="eyebrow">Service & Fristen</span><h1>Wartungszentrale</h1><p>Alle Wartungen und Garantiefristen im Blick – inklusive automatischer Folgetermine und Kalenderexport.</p></div>
-          <a className="button" href="/api/calendar">Termine als Kalender ↓</a>
+          <div><span className="eyebrow">{en ? "Service & deadlines" : "Service & Fristen"}</span><h1>{en ? "Maintenance center" : "Wartungszentrale"}</h1><p>{en ? "Keep track of every maintenance and warranty deadline – including automatic follow-up dates and calendar export." : "Alle Wartungen und Garantiefristen im Blick – inklusive automatischer Folgetermine und Kalenderexport."}</p></div>
+          <a className="button" href="/api/calendar">{en ? "Dates as calendar" : "Termine als Kalender"} ↓</a>
         </section>
         {success && <p className="form-success team-message">{success}</p>}
         {error && <p className="form-error team-message">{error}</p>}
-        <ServiceCenterClient assets={assets} customers={customers} customerByAsset={customerByAsset} initialCustomerId={initialCustomerId} />
+        <ServiceCenterClient assets={assets} customers={customers} customerByAsset={customerByAsset} initialCustomerId={initialCustomerId} locale={locale} />
       </div>
     </main>
   );
