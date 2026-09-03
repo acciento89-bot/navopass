@@ -63,7 +63,7 @@ export async function recordServiceEntryAction(formData: FormData) {
       if (jobId) {
         await client.query(
           `UPDATE service_jobs SET status='DONE',completed_event_id=$1,completed_at=now(),updated_at=now()
-            WHERE id=$2 AND user_id=$3 AND asset_id=$4 AND status IN ('OPEN','IN_PROGRESS')`,
+            WHERE id=$2 AND (user_id=$3 OR assigned_user_id=$3) AND asset_id=$4 AND status IN ('OPEN','IN_PROGRESS')`,
           [newEventId,jobId,user.id,asset.id]
         );
       }
