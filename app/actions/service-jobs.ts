@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { getOwnedAsset, roleCanManage } from "@/lib/assets";
 import { ensureCustomerSchema } from "@/lib/customer-schema";
 import { query } from "@/lib/db";
+import { canExecuteBusinessServiceJob, hasBusinessService } from "@/lib/entitlements";
 import { brandedMail, isMailConfigured, sendMail } from "@/lib/mailer";
 
 function text(formData: FormData, key: string, max = 1000) { return String(formData.get(key) ?? "").trim().slice(0, max); }
@@ -17,6 +18,10 @@ function durationMinutes(formData: FormData) {
   return Number.isFinite(parsed) ? Math.max(15, Math.min(720, Math.round(parsed))) : 60;
 }
 const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH"]);
+
+function requireBusinessDispatch(user: Awaited<ReturnType<typeof requireUser>>) {
+  if (!hasBusinessService(user)) redirect(`/preise?billingError=${encodeURIComponent("Service-Disposition, Kundenverwaltung und Technikerplanung sind im Business-Tarif enthalten.")}`);
+}
 
 async function validateAssignee(assetId: string, creatorId: string, assignedUserId: string) {
   if (!assignedUserId || assignedUserId === creatorId) return creatorId;
@@ -56,6 +61,7 @@ function scheduleConflictRedirect() {
 export async function createServiceJobAction(formData: FormData) {
   const user = await requireUser();
   if (user.account_type !== "PROFESSIONAL") redirect("/app/profil?error=Serviceauftraege%20sind%20fuer%20berufliche%20Profile%20vorgesehen.");
+  requireBusinessDispatch(user);
   await ensureCustomerSchema();
   const assetId = text(formData, "assetId", 80);
   const customerId = text(formData, "customerId", 80);
@@ -83,6 +89,7 @@ export async function createServiceJobAction(formData: FormData) {
 
 export async function assignServiceJobAction(formData: FormData) {
   const user = await requireUser();
+  requireBusinessDispatch(user);
   const jobId = text(formData, "jobId", 80);
   const assignedUserId = text(formData, "assignedUserId", 80) || user.id;
   const job = (await query<{ asset_id: string; scheduled_for: string | null; estimated_duration_minutes: number }>("SELECT asset_id,scheduled_for,estimated_duration_minutes FROM service_jobs WHERE id=$1 AND user_id=$2 LIMIT 1", [jobId, user.id])).rows[0];
@@ -97,6 +104,7 @@ export async function assignServiceJobAction(formData: FormData) {
 
 export async function rescheduleServiceJobAction(formData: FormData) {
   const user = await requireUser();
+  requireBusinessDispatch(user);
   const jobId = text(formData, "jobId", 80);
   const scheduledFor = text(formData, "scheduledFor", 40);
   if (!jobId || !scheduledFor) redirect(`/app/auftraege?error=${encodeURIComponent("Bitte einen neuen Termin auswählen.")}`);
@@ -110,6 +118,7 @@ export async function rescheduleServiceJobAction(formData: FormData) {
 
 export async function updateServiceJobDurationAction(formData: FormData) {
   const user = await requireUser();
+  requireBusinessDispatch(user);
   const jobId = text(formData, "jobId", 80);
   const estimatedDurationMinutes = durationMinutes(formData);
   const job = (await query<{ assigned_user_id: string | null; scheduled_for: string | null }>("SELECT assigned_user_id,scheduled_for FROM service_jobs WHERE id=$1 AND user_id=$2 AND status IN ('OPEN','IN_PROGRESS') LIMIT 1", [jobId, user.id])).rows[0];
@@ -123,6 +132,7 @@ export async function updateServiceJobDurationAction(formData: FormData) {
 export async function startServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
+  if (!await canExecuteBusinessServiceJob(user.id, jobId)) redirect(`/app/auftraege?error=${encodeURIComponent("Dieser Serviceauftrag ist nicht durch einen aktiven Business-Tarif freigeschaltet.")}`);
   await query("UPDATE service_jobs SET status='IN_PROGRESS',started_at=COALESCE(started_at,now()),updated_at=now() WHERE id=$1 AND (user_id=$2 OR assigned_user_id=$2) AND status='OPEN'", [jobId, user.id]);
   revalidatePath("/app/auftraege");
   redirect(`/app/auftraege?success=${encodeURIComponent("Serviceauftrag wurde gestartet.")}`);
@@ -131,6 +141,7 @@ export async function startServiceJobAction(formData: FormData) {
 export async function reopenServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
+  if (!await canExecuteBusinessServiceJob(user.id, jobId)) redirect(`/app/auftraege?error=${encodeURIComponent("Dieser Serviceauftrag ist nicht durch einen aktiven Business-Tarif freigeschaltet.")}`);
   await query("UPDATE service_jobs SET status='OPEN',started_at=NULL,updated_at=now() WHERE id=$1 AND (user_id=$2 OR assigned_user_id=$2) AND status='IN_PROGRESS'", [jobId, user.id]);
   revalidatePath("/app/auftraege");
   redirect(`/app/auftraege?success=${encodeURIComponent("Serviceauftrag wurde zurück auf offen gesetzt.")}`);
@@ -138,6 +149,7 @@ export async function reopenServiceJobAction(formData: FormData) {
 
 export async function cancelServiceJobAction(formData: FormData) {
   const user = await requireUser();
+  requireBusinessDispatch(user);
   const jobId = text(formData, "jobId", 80);
   await query("UPDATE service_jobs SET status='CANCELLED',updated_at=now() WHERE id=$1 AND user_id=$2 AND status IN ('OPEN','IN_PROGRESS')", [jobId, user.id]);
   revalidatePath("/app/auftraege");
