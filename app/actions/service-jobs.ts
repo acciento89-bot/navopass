@@ -66,6 +66,20 @@ export async function assignServiceJobAction(formData: FormData) {
   redirect(`/app/auftraege?success=${encodeURIComponent("Techniker wurde zugewiesen.")}`);
 }
 
+export async function rescheduleServiceJobAction(formData: FormData) {
+  const user = await requireUser();
+  const jobId = text(formData, "jobId", 80);
+  const scheduledFor = text(formData, "scheduledFor", 40);
+  if (!jobId || !scheduledFor) redirect(`/app/auftraege?error=${encodeURIComponent("Bitte einen neuen Termin auswählen.")}`);
+  const result = await query(
+    "UPDATE service_jobs SET scheduled_for=$1::timestamptz,updated_at=now() WHERE id=$2 AND user_id=$3 AND status IN ('OPEN','IN_PROGRESS') RETURNING id",
+    [scheduledFor, jobId, user.id]
+  );
+  if (!result.rows[0]) redirect(`/app/auftraege?error=${encodeURIComponent("Auftrag konnte nicht neu terminiert werden.")}`);
+  revalidatePath("/app/auftraege");
+  redirect(`/app/auftraege?success=${encodeURIComponent("Termin wurde aktualisiert.")}`);
+}
+
 export async function startServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
