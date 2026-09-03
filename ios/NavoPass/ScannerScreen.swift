@@ -5,16 +5,35 @@ import UIKit
 struct ScannerScreen: View {
     @State private var scannedURL: URL?
     var body: some View {
-        VStack(spacing: 20) {
-            QRScannerView { value in
-                guard let url = URL(string: value), url.host == "navopass.de" || url.host == "www.navopass.de" else { return }
-                scannedURL = url
+        ZStack {
+            NavoBackground()
+            ScrollView {
+                VStack(spacing: 22) {
+                    PageHeader(eyebrow: "On site", title: "Scan QR code", subtitle: "Open a NavoPass directly at the asset.")
+                    ZStack {
+                        QRScannerView { value in
+                            guard let url = URL(string: value), url.host == "navopass.de" || url.host == "www.navopass.de" else { return }
+                            scannedURL = url
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .overlay { RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(.white.opacity(0.18)) }
+                        Image(systemName: "viewfinder").resizable().scaledToFit().foregroundStyle(.white.opacity(0.78))
+                            .frame(width: 150, height: 150).allowsHitTesting(false)
+                    }
+                    .aspectRatio(1.05, contentMode: .fit)
+                    .shadow(color: .black.opacity(0.16), radius: 24, y: 12)
+                    Label("Point the camera at a NavoPass QR code.", systemImage: "qrcode.viewfinder")
+                        .font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).navoCard(padding: 15)
+                    if let scannedURL {
+                        Link(destination: scannedURL) {
+                            Label("Open pass", systemImage: "arrow.up.right.square.fill").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
+                        }.buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 17))
+                    }
+                }
+                .navoPageMargins().padding(.top, 18).padding(.bottom, 110)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 24)).padding()
-            Text("Point the camera at a NavoPass QR code.").foregroundStyle(.secondary)
-            if let scannedURL { Link("Open pass", destination: scannedURL).buttonStyle(.borderedProminent) }
         }
-        .navigationTitle("Scan QR code")
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
