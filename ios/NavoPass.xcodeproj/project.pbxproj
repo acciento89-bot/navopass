@@ -18,7 +18,7 @@
 		A1000000000000000000000A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* Localizable.strings */; };
 		A1000000000000000000000B /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000E /* InfoPlist.strings */; };
 		A1000000000000000000000C /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* DesignSystem.swift */; };
-		A1000000000000000000000D /* WebPortalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* WebPortalView.swift */; };
+		A1000000000000000000000D /* NativeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* NativeViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,7 +37,7 @@
 		B1000000000000000000000F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		B10000000000000000000010 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		B10000000000000000000011 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
-		B10000000000000000000012 /* WebPortalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPortalView.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* NativeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
