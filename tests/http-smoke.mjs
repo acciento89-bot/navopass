@@ -77,17 +77,33 @@ try {
   );
 
   const cookie = `navopass_session=${sessionToken}`;
-  const dashboardResponse = await page("/app", { headers: { cookie } });
+  const authHeaders = { cookie };
+
+  const dashboardResponse = await page("/app", { headers: authHeaders });
   assert.equal(dashboardResponse.status, 200, "authenticated dashboard should load");
   const dashboard = await dashboardResponse.text();
   assert.match(dashboard, /Meine Pässe/);
   assert.match(dashboard, />Preise</);
   assert.match(dashboard, />Rechtliches</);
 
-  const legalResponse = await page("/impressum", { headers: { cookie } });
-  assert.equal(legalResponse.status, 200, "signed-in legal page should load");
+  for (const path of ["/impressum", "/datenschutz", "/nutzungsbedingungen", "/preise", "/"]) {
+    const response = await page(path, { headers: authHeaders });
+    assert.equal(response.status, 200, `signed-in ${path} should load without invalidating the session`);
+  }
+
+  const legalResponse = await page("/impressum", { headers: authHeaders });
   const legal = await legalResponse.text();
   assert.match(legal, /Mein Konto/, "public legal shell should retain signed-in navigation");
+  assert.match(legal, /href="\/app"[^>]*>Startseite</, "signed-in legal navigation should return to the app");
+
+  const sessionRow = await client.query(
+    "SELECT count(*)::int AS count FROM sessions WHERE user_id=$1 AND token_hash=$2 AND expires_at>now()",
+    [userId, sessionHash]
+  );
+  assert.equal(sessionRow.rows[0]?.count, 1, "visiting public/legal pages must not delete the active session row");
+
+  const dashboardAfterPublicPages = await page("/app", { headers: authHeaders });
+  assert.equal(dashboardAfterPublicPages.status, 200, "session must still authenticate after visiting legal/public pages");
 } finally {
   await client.query("DELETE FROM users WHERE id=$1", [userId]).catch(() => undefined);
   await client.end();
