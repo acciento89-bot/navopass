@@ -83,11 +83,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <div className="form-actions" style={{ flexWrap: "wrap" }}><Link className="button" href={`/app/service?customer=${customer.id}`}>Wartungen öffnen</Link><Link className="button ghost" href="/app/scannen">QR scannen</Link></div>
     </section>
 
-    <section className="service-stats">
-      <div><span>Anlagen</span><b>{assets.length}</b><small>zugeordnet</small></div>
-      <div className={overdue > 0 ? "danger" : ""}><span>Überfällig</span><b>{overdue}</b><small>Wartungen</small></div>
-      <div className={due30 > 0 ? "warning" : ""}><span>Nächste 30 Tage</span><b>{due30}</b><small>Wartungen</small></div>
-      <div><span>Ohne Termin</span><b>{unplanned}</b><small>noch ungeplant</small></div>
+    <section className="pass-status-grid">
+      <article className="status-card"><span>Anlagen</span><b>{assets.length}</b><small>zugeordnet</small></article>
+      <article className={`status-card ${overdue > 0 ? "danger" : "ok"}`}><span>Überfällig</span><b>{overdue}</b><small>Wartungen</small></article>
+      <article className={`status-card ${due30 > 0 ? "warning" : "ok"}`}><span>Nächste 30 Tage</span><b>{due30}</b><small>Wartungen</small></article>
+      <article className="status-card"><span>Ohne Termin</span><b>{unplanned}</b><small>noch ungeplant</small></article>
     </section>
 
     <section className="detail-grid">
