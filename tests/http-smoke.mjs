@@ -42,8 +42,12 @@ for (const path of [
   await expectOk(path);
 }
 
-const pricing = await (await expectOk("/preise")).text();
+const pricing = await (await page("/preise", { headers: { cookie: "navopass_locale=de" } })).text();
 assert.match(pricing, /§ 19 UStG/, "pricing must show Kleinunternehmer notice");
+const englishPricingResponse = await page("/preise", { headers: { cookie: "navopass_locale=en" } });
+assert.equal(englishPricingResponse.status, 200, "English pricing should return 200");
+const englishPricing = await englishPricingResponse.text();
+assert.match(englishPricing, /small-business regulation/, "pricing must provide the English VAT notice");
 
 const anonymousApp = await page("/app");
 assert.ok(anonymousApp.status >= 300 && anonymousApp.status < 400, "anonymous /app should redirect");
@@ -76,7 +80,7 @@ try {
     [userId, sessionHash]
   );
 
-  const cookie = `navopass_session=${sessionToken}`;
+  const cookie = `navopass_session=${sessionToken}; navopass_locale=de`;
   const authHeaders = { cookie };
 
   const dashboardResponse = await page("/app", { headers: authHeaders });

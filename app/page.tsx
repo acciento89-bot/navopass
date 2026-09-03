@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getLocale, type Locale } from "@/lib/i18n";
 import styles from "./home.module.css";
 
 function Icon({ children, size = 22 }: { children: ReactNode; size?: number }) {
@@ -10,9 +12,9 @@ function Icon({ children, size = 22 }: { children: ReactNode; size?: number }) {
   );
 }
 
-function Brand() {
+function Brand({ locale }: { locale: Locale }) {
   return (
-    <Link href="/" className={styles.brand} aria-label="NavoPass Startseite">
+    <Link href="/" className={styles.brand} aria-label={locale === "de" ? "NavoPass Startseite" : "NavoPass home page"}>
       <span className={styles.brandMark}>
         <Icon size={23}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon>
       </span>
@@ -102,22 +104,31 @@ const businessBenefits = [
   "QR-Aufkleber, Servicezugänge und nachvollziehbare Objekt-Historien verwalten",
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const locale = await getLocale();
+  const en = locale === "en";
+  const tr = (de: string, english: string) => en ? english : de;
+  const localizedSteps = steps.map((step, index) => ({ ...step, title: ["Create an item", "Manage history & deadlines", "Share the QR code", "Use it together"][index], text: ["Create your pass in seconds and add the most important information.", "Upload documents, record maintenance and keep an eye on service and warranty deadlines.", "Your pass is linked to a QR code and can be opened directly in any browser.", "Organise passes on your own, with your household or team, and control access with roles."][index] }));
+  const localizedBusinessWorkflow = businessWorkflow.map((step, index) => ({ ...step, title: ["Organise customers & assets", "Plan service jobs", "Document work on site", "Complete & send the report"][index], text: ["Assign asset passes to customers and locations and manage equipment, systems, vehicles, machines, documents and QR codes in one place.", "Plan appointments and duration, set priorities, assign staff or service technicians and automatically prevent scheduling conflicts.", "Record work, materials, readings, test results, findings, recommendations, working time and customer confirmation during the visit.", "Create a traceable service report with a printable PDF view and send the customer a protected report link."][index] }));
+  const localizedAssetTypes = assetTypes.map((item, index) => ({ ...item, label: ["Heat pump", "Bicycle", "Car", "Tool", "Washing machine", "Air conditioner", "Machine", "Boat"][index] }));
+  const localizedPrivateBenefits = en ? ["Keep important documents and warranties safely in one place", "Stay on top of maintenance and warranty deadlines", "Use the QR code for repairs, handovers or resale", "Manage passes together with your family in one household"] : privateBenefits;
+  const localizedBusinessBenefits = en ? ["Organise customers, locations, devices, vehicles and systems digitally", "Plan service, inspection and field jobs with appointments and team assignments", "Use weekly scheduling with job durations and conflict prevention", "Document work, materials, readings, test results and customer confirmations", "Export service reports as PDFs and share them securely with customers", "Manage QR stickers, service access and traceable asset histories"] : businessBenefits;
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Brand />
-          <nav className={styles.nav} aria-label="Hauptnavigation">
-            <a href="#produkt">Produkt</a>
-            <a href="#zielgruppen">Für wen?</a>
+          <Brand locale={locale} />
+          <nav className={styles.nav} aria-label={tr("Hauptnavigation", "Main navigation")}>
+            <a href="#produkt">{tr("Produkt", "Product")}</a>
+            <a href="#zielgruppen">{tr("Für wen?", "For whom?")}</a>
             <a href="#firmen-service">Business</a>
-            <Link href="/preise">Preise</Link>
-            <a href="#start">Loslegen</a>
+            <Link href="/preise">{tr("Preise", "Pricing")}</Link>
+            <a href="#start">{tr("Loslegen", "Get started")}</a>
           </nav>
           <div className={styles.headerActions}>
-            <Link href="/login" className={styles.login}>Anmelden</Link>
-            <Link href="/register" className={styles.topCta}>Kostenlos starten <span>→</span></Link>
+            <LanguageSwitcher compact />
+            <Link href="/login" className={styles.login}>{tr("Anmelden", "Sign in")}</Link>
+            <Link href="/register" className={styles.topCta}>{tr("Kostenlos starten", "Start for free")} <span>→</span></Link>
           </div>
         </div>
       </header>
@@ -131,18 +142,18 @@ export default function HomePage() {
           <div className={styles.heroText}>
             <div className={styles.heroBadge}>
               <Icon size={16}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/></Icon>
-              Digitale Pässe für Privat, Familien und Unternehmen
+              {tr("Digitale Pässe für Privat, Familien und Unternehmen", "Digital passes for individuals, families and businesses")}
             </div>
-            <h1>Alles, was dir gehört,<br/>bekommt seinen eigenen<br/><em>digitalen Pass.</em></h1>
-            <p>Privat bündelt NavoPass Dokumente, Garantien, Reparaturen und Wartungen. Unternehmen nutzen dieselben Objektpässe zusätzlich für Kundenverwaltung, Einsatzplanung, Teamzuweisung und nachvollziehbare Service- oder Arbeitsberichte – unabhängig von Branche oder Gewerbe.</p>
+            <h1>{tr("Alles, was dir gehört,", "Everything you own")}<br/>{tr("bekommt seinen eigenen", "gets its own")}<br/><em>{tr("digitalen Pass.", "digital pass.")}</em></h1>
+            <p>{tr("Privat bündelt NavoPass Dokumente, Garantien, Reparaturen und Wartungen. Unternehmen nutzen dieselben Objektpässe zusätzlich für Kundenverwaltung, Einsatzplanung, Teamzuweisung und nachvollziehbare Service- oder Arbeitsberichte – unabhängig von Branche oder Gewerbe.", "For personal use, NavoPass brings documents, warranties, repairs and maintenance together. Businesses also use the same asset passes for customer management, job scheduling, team assignments and traceable service or work reports – across industries.")}</p>
             <div className={styles.heroActions}>
-              <Link href="/register" className={styles.primaryCta}>Kostenlos starten <span>→</span></Link>
-              <a href="#firmen-service" className={styles.secondaryCta}>Business-Funktionen ansehen <span className={styles.play}>↓</span></a>
+              <Link href="/register" className={styles.primaryCta}>{tr("Kostenlos starten", "Start for free")} <span>→</span></Link>
+              <a href="#firmen-service" className={styles.secondaryCta}>{tr("Business-Funktionen ansehen", "Explore business features")} <span className={styles.play}>↓</span></a>
             </div>
             <div className={styles.trustBar}>
-              <span><Icon size={17}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon> Datenschutz im Fokus</span>
-              <span><Icon size={17}><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></Icon> In Sekunden eingerichtet</span>
-              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Browserbasiert & QR-fähig</span>
+              <span><Icon size={17}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon> {tr("Datenschutz im Fokus", "Privacy by design")}</span>
+              <span><Icon size={17}><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></Icon> {tr("In Sekunden eingerichtet", "Set up in seconds")}</span>
+              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> {tr("Browserbasiert & QR-fähig", "Browser-based & QR-ready")}</span>
             </div>
           </div>
 
@@ -150,34 +161,34 @@ export default function HomePage() {
             <div className={styles.demoCard}>
               <div className={styles.demoHead}>
                 <div className={styles.productImage}>
-                  <img src="/heatpump.svg" alt="Beispiel eines technischen Objektpasses" />
+                  <img src="/heatpump.svg" alt={tr("Beispiel eines technischen Objektpasses", "Example of a technical asset pass")} />
                 </div>
                 <div className={styles.productTitle}>
-                  <span>TECHNISCHES OBJEKT</span>
-                  <h2>Beispiel-Anlage</h2>
-                  <small>Seriennummer</small>
+                  <span>{tr("TECHNISCHES OBJEKT", "TECHNICAL ASSET")}</span>
+                  <h2>{tr("Beispiel-Anlage", "Example system")}</h2>
+                  <small>{tr("Seriennummer", "Serial number")}</small>
                   <b>NP-2026-784512</b>
                 </div>
                 <div className={styles.demoQr}>
-                  <img src="/api/qr?data=https%3A%2F%2Fnavopass.de%2Fregister" alt="QR-Code Beispiel" />
+                  <img src="/api/qr?data=https%3A%2F%2Fnavopass.de%2Fregister" alt={tr("QR-Code Beispiel", "Example QR code")} />
                 </div>
               </div>
 
               <div className={styles.demoTabs}>
-                <button className={styles.activeTab}>Übersicht</button>
-                <button>Historie</button>
-                <button>Dokumente</button>
+                <button className={styles.activeTab}>{tr("Übersicht", "Overview")}</button>
+                <button>{tr("Historie", "History")}</button>
+                <button>{tr("Dokumente", "Documents")}</button>
               </div>
 
               <div className={styles.demoStats}>
-                <article><span>Garantie</span><b>Bis 12.06.2028</b><small className={styles.green}>Noch 3 Jahre</small></article>
-                <article><span>Letzter Service</span><b>18.04.2026</b><small>vor 4 Monaten</small></article>
-                <article><span>Nächster Termin</span><b>April 2027</b><small className={styles.blue}>in 7 Monaten</small></article>
+                <article><span>{tr("Garantie", "Warranty")}</span><b>{tr("Bis 12.06.2028", "Until 12 Jun 2028")}</b><small className={styles.green}>{tr("Noch 3 Jahre", "3 years remaining")}</small></article>
+                <article><span>{tr("Letzter Service", "Last service")}</span><b>{tr("18.04.2026", "18 Apr 2026")}</b><small>{tr("vor 4 Monaten", "4 months ago")}</small></article>
+                <article><span>{tr("Nächster Termin", "Next appointment")}</span><b>{tr("April 2027", "April 2027")}</b><small className={styles.blue}>{tr("in 7 Monaten", "in 7 months")}</small></article>
               </div>
 
               <div className={styles.demoRows}>
-                <div><span>Status</span><b className={styles.statusOk}>Alles in Ordnung</b><strong>›</strong></div>
-                <div><span>Bereich</span><b>Team · 3 Mitglieder</b><strong>›</strong></div>
+                <div><span>Status</span><b className={styles.statusOk}>{tr("Alles in Ordnung", "Everything is up to date")}</b><strong>›</strong></div>
+                <div><span>{tr("Bereich", "Workspace")}</span><b>{tr("Team · 3 Mitglieder", "Team · 3 members")}</b><strong>›</strong></div>
               </div>
             </div>
           </div>
@@ -186,11 +197,11 @@ export default function HomePage() {
 
       <section className={styles.stepsSection} id="so-gehts">
         <div className={styles.sectionHeading}>
-          <span>SO FUNKTIONIERT&apos;S</span>
-          <h2>In 4 einfachen Schritten zum digitalen Pass</h2>
+          <span>{tr("SO FUNKTIONIERT'S", "HOW IT WORKS")}</span>
+          <h2>{tr("In 4 einfachen Schritten zum digitalen Pass", "Your digital pass in 4 simple steps")}</h2>
         </div>
         <div className={styles.stepsGrid}>
-          {steps.map((step, index) => (
+          {(en ? localizedSteps : steps).map((step, index) => (
             <article className={styles.stepCard} key={step.title}>
               <div className={styles.stepNumber}>{step.number}</div>
               {index < steps.length - 1 && <div className={styles.connector} aria-hidden="true" />}
@@ -204,55 +215,55 @@ export default function HomePage() {
 
       <section className={styles.assetSection}>
         <div className={styles.sectionHeading}>
-          <span>FÜR ALLES, WAS DIR WICHTIG IST</span>
-          <h2>Ein Pass für jedes deiner Dinge</h2>
+          <span>{tr("FÜR ALLES, WAS DIR WICHTIG IST", "FOR EVERYTHING THAT MATTERS")}</span>
+          <h2>{tr("Ein Pass für jedes deiner Dinge", "One pass for every item you own")}</h2>
         </div>
         <div className={styles.assetGrid}>
-          {assetTypes.map((item) => (
+          {(en ? localizedAssetTypes : assetTypes).map((item) => (
             <article className={styles.assetCard} key={item.label}>
               <div>{item.icon}</div>
               <b>{item.label}</b>
             </article>
           ))}
         </div>
-        <a href="#zielgruppen" className={styles.more}>Und vieles mehr…</a>
+        <a href="#zielgruppen" className={styles.more}>{tr("Und vieles mehr…", "And much more…")}</a>
       </section>
 
       <section className={styles.audienceSection} id="zielgruppen">
         <article className={styles.audienceCard}>
           <div className={styles.audienceImage}>
-            <img src="/navopass-private.svg" alt="Helles Zuhause als Beispiel für private Nutzung" />
+            <img src="/navopass-private.svg" alt={tr("Helles Zuhause als Beispiel für private Nutzung", "Bright home illustrating personal use")} />
           </div>
           <div className={styles.audienceContent}>
-            <span>FÜR PRIVATPERSONEN & FAMILIEN</span>
-            <h2>Alles im Blick. Zuhause und unterwegs.</h2>
+            <span>{tr("FÜR PRIVATPERSONEN & FAMILIEN", "FOR INDIVIDUALS & FAMILIES")}</span>
+            <h2>{tr("Alles im Blick. Zuhause und unterwegs.", "Stay organised. At home and on the go.")}</h2>
             <ul>
-              {privateBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
+              {localizedPrivateBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
             </ul>
           </div>
         </article>
 
         <article className={styles.audienceCard}>
           <div className={styles.audienceContent}>
-            <span>FÜR UNTERNEHMEN, SERVICE- & AUSSENDIENSTTEAMS</span>
-            <h2>Vom Objektpass bis zum fertigen Einsatzbericht.</h2>
+            <span>{tr("FÜR UNTERNEHMEN, SERVICE- & AUSSENDIENSTTEAMS", "FOR BUSINESSES, SERVICE & FIELD TEAMS")}</span>
+            <h2>{tr("Vom Objektpass bis zum fertigen Einsatzbericht.", "From asset pass to completed service report.")}</h2>
             <ul>
-              {businessBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
+              {localizedBusinessBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
             </ul>
           </div>
           <div className={styles.audienceImage}>
-            <img src="/navopass-business.svg" alt="Modernes Büro als Beispiel für geschäftliche Nutzung" />
+            <img src="/navopass-business.svg" alt={tr("Modernes Büro als Beispiel für geschäftliche Nutzung", "Modern office illustrating business use")} />
           </div>
         </article>
       </section>
 
       <section className={styles.stepsSection} id="firmen-service">
         <div className={styles.sectionHeading}>
-          <span>NAVOPASS BUSINESS FÜR VIELE BRANCHEN</span>
-          <h2>Ein durchgängiger Einsatzprozess statt einzelner QR-Pässe</h2>
+          <span>{tr("NAVOPASS BUSINESS FÜR VIELE BRANCHEN", "NAVOPASS BUSINESS ACROSS INDUSTRIES")}</span>
+          <h2>{tr("Ein durchgängiger Einsatzprozess statt einzelner QR-Pässe", "One connected service workflow, not isolated QR passes")}</h2>
         </div>
         <div className={styles.stepsGrid}>
-          {businessWorkflow.map((step, index) => (
+          {(en ? localizedBusinessWorkflow : businessWorkflow).map((step, index) => (
             <article className={styles.stepCard} key={step.title}>
               <div className={styles.stepNumber}>{step.number}</div>
               {index < businessWorkflow.length - 1 && <div className={styles.connector} aria-hidden="true" />}
@@ -267,22 +278,22 @@ export default function HomePage() {
       <section className={styles.ctaPanel} id="start">
         <div className={styles.ctaShield}><Icon size={28}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon></div>
         <div>
-          <h2>Vom ersten Pass bis zum digitalen Einsatzprozess.</h2>
-          <p>Starte mit NavoPass und wähle den Tarif passend zu Haushalt, Team oder Unternehmen – vom Handwerk über Wartung und Prüfung bis zu Fahrzeug-, Geräte- oder Außendienst-Services.</p>
+          <h2>{tr("Vom ersten Pass bis zum digitalen Einsatzprozess.", "From your first pass to a complete digital service workflow.")}</h2>
+          <p>{tr("Starte mit NavoPass und wähle den Tarif passend zu Haushalt, Team oder Unternehmen – vom Handwerk über Wartung und Prüfung bis zu Fahrzeug-, Geräte- oder Außendienst-Services.", "Start with NavoPass and choose the plan that fits your household, team or business – from trades and maintenance to inspections, vehicle service, equipment service and field operations.")}</p>
         </div>
         <div className={styles.ctaButtons}>
-          <Link href="/register" className={styles.primaryCta}>Kostenlos starten <span>→</span></Link>
-          <Link href="/preise" className={styles.moreCta}>Preise ansehen <span>→</span></Link>
+          <Link href="/register" className={styles.primaryCta}>{tr("Kostenlos starten", "Start for free")} <span>→</span></Link>
+          <Link href="/preise" className={styles.moreCta}>{tr("Preise ansehen", "View pricing")} <span>→</span></Link>
         </div>
       </section>
 
       <footer className={styles.footer} id="footer">
         <div className={styles.footerInner}>
-          <div className={styles.footerBrand}><Brand /><p>Digitale Objektpässe und Einsatzprozesse.</p></div>
-          <div><b>Produkt</b><a href="#so-gehts">Digitale Pässe</a><a href="#firmen-service">Business</a><Link href="/preise">Preise</Link><Link href="/register">Kostenlos starten</Link></div>
-          <div><b>Ressourcen</b><Link href="/kontakt">Kontakt & Support</Link><a href="#firmen-service">Einsatzplanung & Berichte</a><a href="#produkt">QR-Pässe</a></div>
-          <div><b>Unternehmen</b><a href="https://kamilunavo.com">Kamilunavo</a><a href="https://kamilunavo.com/support">Kamilunavo Support</a></div>
-          <div><b>Rechtliches</b><Link href="/datenschutz">Datenschutz</Link><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link><span>© 2026 Kamilunavo</span></div>
+          <div className={styles.footerBrand}><Brand locale={locale} /><p>{tr("Digitale Objektpässe und Einsatzprozesse.", "Digital asset passes and service workflows.")}</p></div>
+          <div><b>{tr("Produkt", "Product")}</b><a href="#so-gehts">{tr("Digitale Pässe", "Digital passes")}</a><a href="#firmen-service">Business</a><Link href="/preise">{tr("Preise", "Pricing")}</Link><Link href="/register">{tr("Kostenlos starten", "Start for free")}</Link></div>
+          <div><b>{tr("Ressourcen", "Resources")}</b><Link href="/kontakt">{tr("Kontakt & Support", "Contact & support")}</Link><a href="#firmen-service">{tr("Einsatzplanung & Berichte", "Scheduling & reports")}</a><a href="#produkt">QR {tr("Pässe", "passes")}</a></div>
+          <div><b>{tr("Unternehmen", "Company")}</b><a href="https://kamilunavo.com">Kamilunavo</a><a href="https://kamilunavo.com/support">Kamilunavo Support</a></div>
+          <div><b>{tr("Rechtliches", "Legal")}</b><Link href="/datenschutz">{tr("Datenschutz", "Privacy")}</Link><Link href="/impressum">{tr("Impressum", "Legal notice")}</Link><Link href="/nutzungsbedingungen">{tr("Nutzungsbedingungen", "Terms of use")}</Link><span>© 2026 Kamilunavo</span></div>
         </div>
       </footer>
     </main>

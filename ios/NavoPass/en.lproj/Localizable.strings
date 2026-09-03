@@ -1,0 +1,10 @@
+"Loading NavoPass…" = "Loading NavoPass…";
+"Passes" = "Passes";
+"Scan" = "Scan";
+"Account" = "Account";
+"The server response was invalid." = "The server response was invalid.";
+"Email or password is incorrect." = "Email or password is incorrect.";
+"Too many attempts. Please try again later." = "Too many attempts. Please try again later.";
+"Your current plan's pass limit has been reached." = "Your current plan's pass limit has been reached.";
+"The request could not be completed." = "The request could not be completed.";
+

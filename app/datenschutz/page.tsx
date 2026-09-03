@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicShell } from "@/components/public-shell";
 import styles from "@/app/public-pages.module.css";
+import { EnglishPrivacy } from "@/components/legal-english";
+import { getLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Datenschutz",
   description: "Datenschutzerklärung für NavoPass.",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  if (await getLocale() === "en") return <EnglishPrivacy />;
   return (
     <PublicShell>
       <main className={styles.main}>
@@ -21,13 +24,13 @@ export default function PrivacyPage() {
         <article className={styles.legal}>
           <section><h2>1. Verantwortlicher</h2><p><strong>Piotr Kaminski – Kamilunavo</strong><br />Otto-Braun-Straße 14<br />40595 Düsseldorf<br />Deutschland<br />E-Mail: <a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a></p></section>
 
-          <section><h2>2. Bereitstellung der Website und Server-Protokolle</h2><p>Beim Aufruf von navopass.de werden technisch erforderliche Verbindungsdaten verarbeitet. Dazu können insbesondere IP-Adresse, Datum und Uhrzeit, angeforderte URL, Referrer, Browser- und Betriebssysteminformationen, HTTP-Statuscode und übertragene Datenmenge gehören.</p><p>Die Verarbeitung dient der Auslieferung, Stabilität und Sicherheit des Dienstes sowie der Erkennung und Abwehr von Missbrauch. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.</p></section>
+          <section><h2>2. Bereitstellung der Website, Server-Protokolle und Sprachauswahl</h2><p>Beim Aufruf von navopass.de werden technisch erforderliche Verbindungsdaten verarbeitet. Dazu können insbesondere IP-Adresse, Datum und Uhrzeit, angeforderte URL, Referrer, Browser- und Betriebssysteminformationen, HTTP-Statuscode und übertragene Datenmenge gehören.</p><p>Die Verarbeitung dient der Auslieferung, Stabilität und Sicherheit des Dienstes sowie der Erkennung und Abwehr von Missbrauch. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.</p><p>Um Besuchern aus Deutschland automatisch die deutsche und Besuchern aus anderen Ländern die englische Fassung anzuzeigen, wertet NavoPass ein vom vorgeschalteten Netzwerk übermitteltes Länderkennzeichen aus. Fehlt dieses Kennzeichen, kann die IP-Adresse einmalig an den IP-zu-Land-Dienst <a href="https://country.is/" target="_blank" rel="noreferrer">Country</a> übermittelt werden. Zur Sprachauswahl wird nur der zweistellige Ländercode verwendet und für höchstens 24 Stunden im Cookie <code className={styles.legalCode}>navopass_country</code> gespeichert. Laut Anbieter ist der Dienst ohne Schlüssel nutzbar und protokolliert Anfragen nicht. Schlägt die Ermittlung fehl, wird ausschließlich die Browsersprache als Ausweichwert verwendet. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; berechtigtes Interesse ist eine verständliche, standortgerechte Bereitstellung des internationalen Angebots.</p></section>
 
           <section><h2>3. Hosting</h2><p>NavoPass wird auf Server-Infrastruktur der Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Deutschland, betrieben. Dabei werden die für Betrieb, Datenbank, Dateispeicherung und technische Protokollierung erforderlichen Daten verarbeitet. Soweit erforderlich erfolgt die Verarbeitung auf Grundlage eines Vertrags zur Auftragsverarbeitung.</p></section>
 
           <section><h2>4. Registrierung, E-Mail-Bestätigung und Benutzerkonto</h2><p>Bei der Registrierung werden Name, E-Mail-Adresse und ein Passwort verarbeitet. Das Passwort wird nicht im Klartext gespeichert, sondern als kryptographischer Passwort-Hash. Die Daten werden benötigt, um das Benutzerkonto bereitzustellen, Anmeldungen zu ermöglichen und den NavoPass-Dienst zu erfüllen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.</p><p>Zur Bestätigung einer E-Mail-Adresse erzeugt NavoPass einen zeitlich begrenzten, einmal verwendbaren Link. Serverseitig wird nur ein kryptographischer Hash des Bestätigungstokens gespeichert. Bei einer Änderung der Konto-E-Mail muss die neue Adresse erneut bestätigt werden.</p><p>Zum Nachweis der bei der Registrierung abgegebenen Erklärung speichert NavoPass außerdem den Zeitpunkt der Akzeptanz der Nutzungsbedingungen, die dabei geltende Versionskennung sowie den Zeitpunkt der Kenntnisnahme der Datenschutzerklärung.</p></section>
 
-          <section><h2>5. Anmeldung, Passwort-Wiederherstellung und technisch notwendige Cookies</h2><p>Für angemeldete Nutzer verwendet NavoPass das technisch notwendige Session-Cookie <code className={styles.legalCode}>navopass_session</code>. Es enthält ein zufälliges Sitzungstoken; serverseitig wird nur der Hash dieses Tokens gespeichert. Die Sitzung ist grundsätzlich auf 30 Tage begrenzt und kann durch Abmelden vorzeitig beendet werden.</p><p>Für „Passwort vergessen“ wird die eingegebene E-Mail-Adresse verarbeitet. Wenn ein passendes Konto besteht, erzeugt NavoPass einen zeitlich begrenzten, einmal verwendbaren Wiederherstellungslink. Serverseitig wird nur ein Hash des Wiederherstellungstokens gespeichert. Nach erfolgreicher Passwortänderung werden bestehende Sitzungen beendet.</p></section>
+          <section><h2>5. Anmeldung, Passwort-Wiederherstellung und technisch notwendige Cookies</h2><p>Für angemeldete Nutzer verwendet NavoPass das technisch notwendige Session-Cookie <code className={styles.legalCode}>navopass_session</code>. Es enthält ein zufälliges Sitzungstoken; serverseitig wird nur der Hash dieses Tokens gespeichert. Die Sitzung ist grundsätzlich auf 30 Tage begrenzt und kann durch Abmelden vorzeitig beendet werden.</p><p>Für die Sprachauswahl werden außerdem <code className={styles.legalCode}>navopass_country</code> für den ermittelten Ländercode (höchstens 24 Stunden) und nach einer manuellen Sprachwahl <code className={styles.legalCode}>navopass_locale</code> (höchstens ein Jahr) verwendet. Beide Cookies enthalten weder ein Sitzungstoken noch Konto- oder Inhaltsdaten.</p><p>Für „Passwort vergessen“ wird die eingegebene E-Mail-Adresse verarbeitet. Wenn ein passendes Konto besteht, erzeugt NavoPass einen zeitlich begrenzten, einmal verwendbaren Wiederherstellungslink. Serverseitig wird nur ein Hash des Wiederherstellungstokens gespeichert. Nach erfolgreicher Passwortänderung werden bestehende Sitzungen beendet.</p></section>
 
           <section><h2>6. Objektpässe, Historie und Dokumente</h2><p>Bei der Nutzung von NavoPass werden die vom Nutzer eingegebenen Objekt- und Produktdaten verarbeitet, zum Beispiel Bezeichnung, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kauf- oder Installationsdatum, Garantie- und Wartungsdaten, Notizen sowie Service- und Reparaturhistorien.</p><p>Hochgeladene Fotos und Dokumente werden auf der NavoPass-Server-Infrastruktur gespeichert und mit dem jeweiligen Objektpass verknüpft. Nutzer entscheiden selbst, welche Inhalte sie hochladen. Rechtsgrundlage für die Bereitstellung dieser Funktionen ist Art. 6 Abs. 1 lit. b DSGVO.</p></section>
 
@@ -58,7 +61,7 @@ export default function PrivacyPage() {
           <section><h2>19. Änderungen dieser Datenschutzerklärung</h2><p>Diese Datenschutzerklärung wird angepasst, wenn sich Funktionen, eingesetzte Dienstleister oder rechtliche Anforderungen ändern. Maßgeblich ist die jeweils auf navopass.de veröffentlichte Fassung.</p></section>
 
           <nav className={styles.legalLinks} aria-label="Weitere rechtliche Informationen"><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link><Link href="/preise">Preise</Link><Link href="/vertrag-widerrufen">Vertrag widerrufen</Link><Link href="/vertrag-kuendigen">Verträge hier kündigen</Link><Link href="/kontakt">Kontakt</Link></nav>
-          <p className={styles.meta}>Stand: 17. August 2026</p>
+          <p className={styles.meta}>Stand: 3. September 2026</p>
         </article>
       </main>
     </PublicShell>

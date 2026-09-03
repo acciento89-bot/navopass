@@ -3,13 +3,16 @@ import Link from "next/link";
 import { NavoPassContactForm } from "@/components/navopass-contact-form";
 import { PublicShell } from "@/components/public-shell";
 import styles from "@/app/public-pages.module.css";
+import { EnglishImprint } from "@/components/legal-english";
+import { getLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Impressum",
   description: "Impressum und Anbieterkennzeichnung für NavoPass.",
 };
 
-export default function ImprintPage() {
+export default async function ImprintPage() {
+  if (await getLocale() === "en") return <EnglishImprint />;
   return (
     <PublicShell>
       <main className={styles.main}>

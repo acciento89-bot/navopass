@@ -23,6 +23,7 @@ function fail(message: string): never {
 }
 
 export async function submitWithdrawalAction(formData: FormData) {
+  const en = value(formData, "locale", 2) === "en";
   const honeypot = value(formData, "companyWebsite", 200);
   if (honeypot) redirect("/vertrag-widerrufen?received=1");
 
@@ -30,8 +31,8 @@ export async function submitWithdrawalAction(formData: FormData) {
   const email = normalizeEmail(value(formData, "email", 320));
   const contractLabel = value(formData, "contractLabel", 120) || "NavoPass-Abo";
 
-  if (consumerName.length < 2) fail("Bitte gib deinen Namen an.");
-  if (!email.includes("@") || email.startsWith("@") || email.endsWith("@")) fail("Bitte gib eine gültige E-Mail-Adresse an.");
+  if (consumerName.length < 2) fail(en ? "Please enter your name." : "Bitte gib deinen Namen an.");
+  if (!email.includes("@") || email.startsWith("@") || email.endsWith("@")) fail(en ? "Please enter a valid email address." : "Bitte gib eine gültige E-Mail-Adresse an.");
 
   const account = await query<{ id: string; stripe_subscription_id: string | null }>(
     "SELECT id,stripe_subscription_id FROM users WHERE lower(email)=lower($1) LIMIT 1",
@@ -51,7 +52,7 @@ export async function submitWithdrawalAction(formData: FormData) {
   const requestId = inserted.rows[0].id;
   const requestedAt = new Date(inserted.rows[0].requested_at);
   let status = "REVIEW_REQUIRED";
-  let note = "Die Widerrufserklärung ist eingegangen und wird dem angegebenen Vertrag zugeordnet und geprüft.";
+  let note = en ? "Your withdrawal notice has been received and will be matched to the stated contract and reviewed." : "Die Widerrufserklärung ist eingegangen und wird dem angegebenen Vertrag zugeordnet und geprüft.";
 
   if (user?.stripe_subscription_id) {
     try {
@@ -61,19 +62,19 @@ export async function submitWithdrawalAction(formData: FormData) {
       if (clearlyWithinWindow && subscription.status !== "canceled") {
         await getStripe().subscriptions.cancel(subscription.id);
         status = "CANCELED_REVIEW_REFUND";
-        note = "Das eindeutig zugeordnete NavoPass-Abonnement lag innerhalb von 14 Tagen seit seiner Erstellung und wurde unmittelbar beendet. Eine gegebenenfalls erforderliche Rückzahlung wird anhand der Zahlung und der gesetzlichen Widerrufsfolgen bearbeitet.";
+        note = en ? "The clearly matched NavoPass subscription was created within the past 14 days and was ended immediately. Any required refund will be processed based on the payment and applicable statutory consequences." : "Das eindeutig zugeordnete NavoPass-Abonnement lag innerhalb von 14 Tagen seit seiner Erstellung und wurde unmittelbar beendet. Eine gegebenenfalls erforderliche Rückzahlung wird anhand der Zahlung und der gesetzlichen Widerrufsfolgen bearbeitet.";
       } else if (subscription.status === "canceled") {
         status = "RECEIVED_SUBSCRIPTION_ENDED";
-        note = "Die Widerrufserklärung ist eingegangen. Das zugeordnete Stripe-Abonnement war bereits beendet; mögliche Rückzahlungsfolgen werden geprüft.";
+        note = en ? "Your withdrawal notice has been received. The matched Stripe subscription had already ended; any refund consequences will be reviewed." : "Die Widerrufserklärung ist eingegangen. Das zugeordnete Stripe-Abonnement war bereits beendet; mögliche Rückzahlungsfolgen werden geprüft.";
       } else {
-        note = "Die Widerrufserklärung ist eingegangen. Da eine automatische eindeutige Fristprüfung nicht abgeschlossen werden konnte, werden Wirksamkeit und weitere Vertragsfolgen geprüft. Der Eingang der Erklärung bleibt mit Datum und Uhrzeit dokumentiert.";
+        note = en ? "Your withdrawal notice has been received. Because an unambiguous automated deadline check could not be completed, validity and further contractual consequences will be reviewed. Receipt remains documented with date and time." : "Die Widerrufserklärung ist eingegangen. Da eine automatische eindeutige Fristprüfung nicht abgeschlossen werden konnte, werden Wirksamkeit und weitere Vertragsfolgen geprüft. Der Eingang der Erklärung bleibt mit Datum und Uhrzeit dokumentiert.";
       }
     } catch (error) {
       console.error("NavoPass withdrawal subscription lookup failed", { requestId, error });
-      note = "Die Widerrufserklärung ist eingegangen. Die automatische Vertragsprüfung war technisch nicht möglich; der Vorgang wird anhand der gespeicherten Erklärung geprüft.";
+      note = en ? "Your withdrawal notice has been received. Automated contract verification was technically unavailable; the case will be reviewed using the stored notice." : "Die Widerrufserklärung ist eingegangen. Die automatische Vertragsprüfung war technisch nicht möglich; der Vorgang wird anhand der gespeicherten Erklärung geprüft.";
     }
   } else {
-    note = "Die Widerrufserklärung ist eingegangen. Ein aktives Stripe-Abonnement konnte nicht automatisch anhand der E-Mail-Adresse zugeordnet werden; die Vertragszuordnung wird geprüft.";
+    note = en ? "Your withdrawal notice has been received. An active Stripe subscription could not be matched automatically using the email address; the contract association will be reviewed." : "Die Widerrufserklärung ist eingegangen. Ein aktives Stripe-Abonnement konnte nicht automatisch anhand der E-Mail-Adresse zugeordnet werden; die Vertragszuordnung wird geprüft.";
   }
 
   await query("UPDATE withdrawal_requests SET processing_status=$1,processing_note=$2 WHERE id=$3", [status, note, requestId]);

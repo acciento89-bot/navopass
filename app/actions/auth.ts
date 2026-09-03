@@ -20,6 +20,9 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+type AuthLocale = "de" | "en";
+function authLocale(formData: FormData): AuthLocale { return text(formData, "locale") === "en" ? "en" : "de"; }
+function message(locale: AuthLocale, de: string, en: string) { return locale === "en" ? en : de; }
 function errorTarget(path: "login" | "register", message: string, next: string) {
   const params = new URLSearchParams({ error: message });
   if (next !== "/app") params.set("next", next);
@@ -42,17 +45,18 @@ export async function registerAction(formData: FormData) {
   const password = text(formData, "password");
   const next = safeNext(text(formData, "next"));
   const legalAccepted = formData.get("legalAccepted") === "on";
+  const locale = authLocale(formData);
   const ip = await requestIp();
   const limit = await consumeRateLimit({ scope: "register:ip", identifier: ip, limit: 8, windowSeconds: 60 * 60 });
 
-  if (!limit.allowed) redirect(errorTarget("register", "Zu viele Registrierungsversuche. Bitte versuche es später erneut.", next));
-  if (name.length < 2 || name.length > 120) redirect(errorTarget("register", "Bitte Namen angeben", next));
-  if (!email.includes("@") || email.length > 254) redirect(errorTarget("register", "Bitte gültige E-Mail angeben", next));
-  if (password.length < 8 || password.length > MAX_PASSWORD_LENGTH) redirect(errorTarget("register", "Passwort muss zwischen 8 und 256 Zeichen haben", next));
-  if (!legalAccepted) redirect(errorTarget("register", "Bitte Nutzungsbedingungen akzeptieren und Datenschutz zur Kenntnis nehmen", next));
+  if (!limit.allowed) redirect(errorTarget("register", message(locale, "Zu viele Registrierungsversuche. Bitte versuche es später erneut.", "Too many registration attempts. Please try again later."), next));
+  if (name.length < 2 || name.length > 120) redirect(errorTarget("register", message(locale, "Bitte Namen angeben", "Please enter your name"), next));
+  if (!email.includes("@") || email.length > 254) redirect(errorTarget("register", message(locale, "Bitte gültige E-Mail angeben", "Please enter a valid email address"), next));
+  if (password.length < 8 || password.length > MAX_PASSWORD_LENGTH) redirect(errorTarget("register", message(locale, "Passwort muss zwischen 8 und 256 Zeichen haben", "Password must be between 8 and 256 characters"), next));
+  if (!legalAccepted) redirect(errorTarget("register", message(locale, "Bitte Nutzungsbedingungen akzeptieren und Datenschutz zur Kenntnis nehmen", "Please accept the Terms of use and acknowledge the Privacy policy"), next));
 
   const existing = await findUserByEmail(email);
-  if (existing) redirect(errorTarget("login", "Konto existiert bereits", next));
+  if (existing) redirect(errorTarget("login", message(locale, "Konto existiert bereits", "An account with this email already exists"), next));
 
   const passwordHash = await hashPassword(password);
   const result = await query<{ id: string }>(
@@ -73,6 +77,7 @@ export async function loginAction(formData: FormData) {
   const email = normalizeEmail(text(formData, "email"));
   const password = text(formData, "password");
   const next = safeNext(text(formData, "next"));
+  const locale = authLocale(formData);
   const ip = await requestIp();
   const [ipLimit, pairLimit] = await Promise.all([
     consumeRateLimit({ scope: "login:ip", identifier: ip, limit: 50, windowSeconds: 15 * 60 }),
@@ -80,7 +85,7 @@ export async function loginAction(formData: FormData) {
   ]);
 
   if (!ipLimit.allowed || !pairLimit.allowed) {
-    redirect(errorTarget("login", "Zu viele Anmeldeversuche. Bitte warte einige Minuten und versuche es erneut.", next));
+    redirect(errorTarget("login", message(locale, "Zu viele Anmeldeversuche. Bitte warte einige Minuten und versuche es erneut.", "Too many sign-in attempts. Please wait a few minutes and try again."), next));
   }
 
   const user = await findUserByEmail(email);
@@ -88,7 +93,7 @@ export async function loginAction(formData: FormData) {
   const passwordMatches = await verifyPassword(passwordForCheck, user?.password_hash ?? DUMMY_PASSWORD_HASH);
 
   if (!user || password.length > MAX_PASSWORD_LENGTH || !passwordMatches) {
-    redirect(errorTarget("login", "E-Mail oder Passwort ist falsch", next));
+    redirect(errorTarget("login", message(locale, "E-Mail oder Passwort ist falsch", "Email or password is incorrect"), next));
   }
 
   await createSession(user.id);
