@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getOwnedAsset, roleCanEdit } from "@/lib/assets";
 import { transaction } from "@/lib/db";
+import { canExecuteBusinessServiceJob } from "@/lib/entitlements";
 
 const EVENT_TYPES = new Set(["SERVICE", "REPAIR", "INSPECTION", "NOTE"]);
 
@@ -23,6 +24,9 @@ export async function recordServiceEntryAction(formData: FormData) {
 
   const asset = await getOwnedAsset(user.id, assetId);
   if (!asset || asset.archived_at || !roleCanEdit(asset, user.id)) redirect("/app?error=Keine%20Berechtigung%20fuer%20diesen%20Pass");
+  if (jobId && !await canExecuteBusinessServiceJob(user.id, jobId, asset.id)) {
+    redirect(`/app/auftraege?error=${encodeURIComponent("Dieser Serviceauftrag ist nicht durch einen aktiven Business-Tarif freigeschaltet.")}`);
+  }
 
   const rawType = text(formData, "eventType", 40) ?? "SERVICE";
   const eventType = EVENT_TYPES.has(rawType) ? rawType : "SERVICE";
