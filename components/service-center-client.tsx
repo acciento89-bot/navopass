@@ -15,8 +15,8 @@ function relativeLabel(days:number){if(days<0)return `${Math.abs(days)} ${Math.a
 function tone(days:number){if(days<0)return"danger";if(days<=30)return"warning";return"ok";}
 function editable(asset:Asset){return asset.access_role!=="VIEWER";}
 
-export function ServiceCenterClient({assets,customers=[],customerByAsset={}}:{assets:Asset[];customers?:CustomerOption[];customerByAsset?:Record<string,string>}){
- const[scope,setScope]=useState("ALL"),[kind,setKind]=useState("ALL"),[query,setQuery]=useState(""),[customerId,setCustomerId]=useState("ALL");
+export function ServiceCenterClient({assets,customers=[],customerByAsset={},initialCustomerId="ALL"}:{assets:Asset[];customers?:CustomerOption[];customerByAsset?:Record<string,string>;initialCustomerId?:string}){
+ const[scope,setScope]=useState("ALL"),[kind,setKind]=useState("ALL"),[query,setQuery]=useState(""),[customerId,setCustomerId]=useState(initialCustomerId);
  const customerNameById=useMemo(()=>new Map(customers.map(customer=>[customer.id,customer.name])),[customers]);
  const active=useMemo(()=>assets.filter(a=>!a.archived_at),[assets]);
  const customerMatches=(asset:Asset)=>customerId==="ALL"||(customerId==="UNASSIGNED"?!customerByAsset[asset.id]:customerByAsset[asset.id]===customerId);
