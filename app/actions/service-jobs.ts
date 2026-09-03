@@ -11,6 +11,7 @@ import { brandedMail, isMailConfigured, sendMail } from "@/lib/mailer";
 
 function text(formData: FormData, key: string, max = 1000) { return String(formData.get(key) ?? "").trim().slice(0, max); }
 function validEmail(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
+const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH"]);
 
 export async function createServiceJobAction(formData: FormData) {
   const user = await requireUser();
@@ -21,22 +22,40 @@ export async function createServiceJobAction(formData: FormData) {
   const title = text(formData, "title", 180) || "Wartung / Service";
   const scheduledFor = text(formData, "scheduledFor", 40) || null;
   const notes = text(formData, "notes", 2000) || null;
+  const priorityRaw = text(formData, "priority", 20) || "NORMAL";
+  const priority = PRIORITIES.has(priorityRaw) ? priorityRaw : "NORMAL";
   const asset = await getOwnedAsset(user.id, assetId);
   if (!asset || !roleCanManage(asset, user.id)) redirect("/app/auftraege?error=Keine%20Berechtigung%20fuer%20diesen%20Objektpass.");
   if (customerId) {
     const customer = await query<{ id: string }>("SELECT id FROM service_customers WHERE id=$1 AND user_id=$2 LIMIT 1", [customerId, user.id]);
     if (!customer.rows[0]) redirect("/app/auftraege?error=Kunde%20wurde%20nicht%20gefunden.");
   }
-  await query(`INSERT INTO service_jobs (user_id,customer_id,asset_id,title,scheduled_for,notes) VALUES ($1,$2,$3,$4,$5::timestamptz,$6)`, [user.id, customerId || null, asset.id, title, scheduledFor, notes]);
+  await query(`INSERT INTO service_jobs (user_id,customer_id,asset_id,title,scheduled_for,notes,priority) VALUES ($1,$2,$3,$4,$5::timestamptz,$6,$7)`, [user.id, customerId || null, asset.id, title, scheduledFor, notes, priority]);
   revalidatePath("/app/auftraege");
   if (customerId) revalidatePath(`/app/kunden/${customerId}`);
   redirect("/app/auftraege?success=Serviceauftrag%20wurde%20angelegt.");
 }
 
+export async function startServiceJobAction(formData: FormData) {
+  const user = await requireUser();
+  const jobId = text(formData, "jobId", 80);
+  await query("UPDATE service_jobs SET status='IN_PROGRESS',started_at=COALESCE(started_at,now()),updated_at=now() WHERE id=$1 AND user_id=$2 AND status='OPEN'", [jobId, user.id]);
+  revalidatePath("/app/auftraege");
+  redirect(`/app/auftraege?success=${encodeURIComponent("Serviceauftrag wurde gestartet.")}`);
+}
+
+export async function reopenServiceJobAction(formData: FormData) {
+  const user = await requireUser();
+  const jobId = text(formData, "jobId", 80);
+  await query("UPDATE service_jobs SET status='OPEN',started_at=NULL,updated_at=now() WHERE id=$1 AND user_id=$2 AND status='IN_PROGRESS'", [jobId, user.id]);
+  revalidatePath("/app/auftraege");
+  redirect(`/app/auftraege?success=${encodeURIComponent("Serviceauftrag wurde zurück auf offen gesetzt.")}`);
+}
+
 export async function cancelServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
-  await query("UPDATE service_jobs SET status='CANCELLED',updated_at=now() WHERE id=$1 AND user_id=$2 AND status='OPEN'", [jobId, user.id]);
+  await query("UPDATE service_jobs SET status='CANCELLED',updated_at=now() WHERE id=$1 AND user_id=$2 AND status IN ('OPEN','IN_PROGRESS')", [jobId, user.id]);
   revalidatePath("/app/auftraege");
 }
 
