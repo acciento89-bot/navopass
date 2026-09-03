@@ -3,12 +3,13 @@ import { BILLING_SCHEMA_STATEMENTS } from "@/lib/billing-schema";
 import { SCHEMA_STATEMENTS } from "@/lib/schema";
 import { SECURITY_SCHEMA_STATEMENTS } from "@/lib/security-schema";
 import { SERVICE_ACCESS_SCHEMA_STATEMENTS } from "@/lib/service-access-schema";
+import { STICKER_ORDER_SCHEMA_STATEMENTS } from "@/lib/sticker-order-schema";
 
 // PostgreSQL DATE (OID 1082) is a calendar day, not a timestamp.
 // Keep it as YYYY-MM-DD to avoid timezone shifts and Date-object crashes.
 types.setTypeParser(1082, (value) => value);
 
-const ALL_SCHEMA_STATEMENTS = [...SCHEMA_STATEMENTS, ...BILLING_SCHEMA_STATEMENTS, ...SECURITY_SCHEMA_STATEMENTS, ...SERVICE_ACCESS_SCHEMA_STATEMENTS] as const;
+const ALL_SCHEMA_STATEMENTS = [...SCHEMA_STATEMENTS, ...BILLING_SCHEMA_STATEMENTS, ...SECURITY_SCHEMA_STATEMENTS, ...SERVICE_ACCESS_SCHEMA_STATEMENTS, ...STICKER_ORDER_SCHEMA_STATEMENTS] as const;
 
 const globalForDb = globalThis as unknown as {
   navopassPool?: Pool;
