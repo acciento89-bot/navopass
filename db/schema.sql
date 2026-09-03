@@ -165,7 +165,10 @@ CREATE TABLE IF NOT EXISTS asset_events (
   is_public boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS created_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS created_by_name text;
 CREATE INDEX IF NOT EXISTS asset_events_asset_id_idx ON asset_events(asset_id);
+CREATE INDEX IF NOT EXISTS asset_events_created_by_idx ON asset_events(created_by_user_id);
 
 CREATE TABLE IF NOT EXISTS asset_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

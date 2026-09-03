@@ -4,7 +4,7 @@ import { daysUntil, type DateOnlyInput } from "@/lib/date";
 import type { WorkspaceRole } from "@/lib/workspaces";
 
 export type Asset = { id:string; owner_id:string; workspace_id:string|null; workspace_name?:string|null; access_role?:WorkspaceRole|null; public_id:string; name:string; category:string; manufacturer:string|null; model:string|null; serial_number:string|null; purchase_date:string|null; warranty_until:string|null; next_service_date:string|null; service_interval_months:number; location:string|null; notes:string|null; visibility:"PRIVATE"|"LINK"|"PUBLIC"; favorite:boolean; archived_at:string|null; created_at:string; updated_at:string };
-export type AssetEvent={id:string;title:string;event_type:string;event_date:string;description:string|null;provider:string|null;cost_cents:number|null;is_public:boolean};
+export type AssetEvent={id:string;title:string;event_type:string;event_date:string;description:string|null;provider:string|null;cost_cents:number|null;is_public:boolean;created_by_user_id?:string|null;created_by_name?:string|null};
 export type AssetDocument={id:string;title:string;url:string;kind:string;is_public:boolean};
 export type ActivityItem={id:string;activity_type:"EVENT"|"DOCUMENT"|"ASSET";happened_at:string;title:string;detail:string|null;asset_id:string;asset_name:string;workspace_name:string|null};
 export function newPublicId(){return randomBytes(8).toString("base64url").replace(/[_-]/g,"").slice(0,10).toUpperCase();}
@@ -12,6 +12,7 @@ const accessibleAssetSelect=`SELECT a.*,w.name AS workspace_name,CASE WHEN a.wor
 const accessWhere=`((a.workspace_id IS NOT NULL AND wm.user_id IS NOT NULL) OR (a.workspace_id IS NULL AND a.owner_id=$1))`;
 export async function listAssets(userId:string){const result=await query<Asset>(`${accessibleAssetSelect} WHERE ${accessWhere} ORDER BY a.favorite DESC,a.updated_at DESC,a.created_at DESC`,[userId]);return result.rows;}
 export async function getOwnedAsset(userId:string,id:string){const result=await query<Asset>(`${accessibleAssetSelect} WHERE a.id=$2 AND ${accessWhere} LIMIT 1`,[userId,id]);return result.rows[0]??null;}
+export async function getAccessibleAssetByPublicId(userId:string,publicId:string){const result=await query<Asset>(`${accessibleAssetSelect} WHERE a.public_id=$2 AND ${accessWhere} LIMIT 1`,[userId,publicId]);return result.rows[0]??null;}
 export async function getShareableAsset(publicId:string){const result=await query<Asset>("SELECT * FROM assets WHERE public_id=$1 AND visibility <> 'PRIVATE' AND archived_at IS NULL LIMIT 1",[publicId]);return result.rows[0]??null;}
 export async function getEvents(assetId:string,publicOnly=false){const sql=publicOnly?"SELECT * FROM asset_events WHERE asset_id=$1 AND is_public=true ORDER BY event_date DESC,created_at DESC":"SELECT * FROM asset_events WHERE asset_id=$1 ORDER BY event_date DESC,created_at DESC";const result=await query<AssetEvent>(sql,[assetId]);return result.rows;}
 export async function getDocuments(assetId:string,publicOnly=false){const sql=publicOnly?"SELECT * FROM asset_documents WHERE asset_id=$1 AND is_public=true ORDER BY created_at DESC":"SELECT * FROM asset_documents WHERE asset_id=$1 ORDER BY created_at DESC";const result=await query<AssetDocument>(sql,[assetId]);return result.rows;}
