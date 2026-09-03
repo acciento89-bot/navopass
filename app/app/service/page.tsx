@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 type CustomerOption = { id: string; name: string; city: string | null };
 type AssetCustomer = { id: string; service_customer_id: string | null };
 
-export default async function ServicePage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+export default async function ServicePage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; customer?: string }> }) {
   const user = await requireUser();
   const assets = await listAssets(user.id);
-  const { success, error } = await searchParams;
+  const { success, error, customer } = await searchParams;
   let customers: CustomerOption[] = [];
   let customerByAsset: Record<string, string> = {};
 
@@ -26,6 +26,7 @@ export default async function ServicePage({ searchParams }: { searchParams: Prom
       customerByAsset = Object.fromEntries(assignments.filter(row => row.service_customer_id).map(row => [row.id, row.service_customer_id as string]));
     }
   }
+  const initialCustomerId = customer && customers.some(item => item.id === customer) ? customer : "ALL";
 
   return (
     <main className="app-page">
@@ -38,7 +39,7 @@ export default async function ServicePage({ searchParams }: { searchParams: Prom
         </section>
         {success && <p className="form-success team-message">{success}</p>}
         {error && <p className="form-error team-message">{error}</p>}
-        <ServiceCenterClient assets={assets} customers={customers} customerByAsset={customerByAsset} />
+        <ServiceCenterClient assets={assets} customers={customers} customerByAsset={customerByAsset} initialCustomerId={initialCustomerId} />
       </div>
     </main>
   );
