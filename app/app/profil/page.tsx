@@ -18,7 +18,7 @@ export default async function ProfileModePage({searchParams}:{searchParams:Promi
         <label>Funktion / Qualifikation<input name="professionalTitle" defaultValue={user.professional_title??""} placeholder="z. B. Kundendiensttechniker SHK" maxLength={180}/></label>
         <button className="button" type="submit">Profil speichern</button>
       </form>
-      <div className="form-tip"><b>Wichtig:</b><span>Ein Firmenprofil allein gibt keine Schreibrechte. Der Eigentümer eines Passes muss dich oder dein Team weiterhin als Bearbeiter, Admin oder Inhaber berechtigen.</span></div>
+      <div className="form-tip"><b>Wichtig:</b><span>Ein Firmenprofil allein gibt keine Schreibrechte. Der Eigentümer muss entweder eine zeitlich begrenzte Servicefreigabe für einen einzelnen Pass erteilen oder dich als Bearbeiter eines gemeinsamen Bereichs berechtigen.</span></div>
     </section>
   </div></main>;
 }
