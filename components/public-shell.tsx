@@ -6,14 +6,15 @@ import styles from "@/app/public-pages.module.css";
 
 export async function PublicShell({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
+  const homeHref = user ? "/app" : "/";
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Logo />
+          <Logo href={homeHref} />
           <nav className={styles.nav} aria-label="Öffentliche Navigation">
-            <Link href="/">Startseite</Link>
+            <Link href={homeHref}>Startseite</Link>
             <Link href="/preise">Preise</Link>
             <Link href="/kontakt">Kontakt</Link>
             <Link href="/datenschutz">Datenschutz</Link>
@@ -40,7 +41,7 @@ export async function PublicShell({ children }: { children: ReactNode }) {
       {children}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
-          <div><Logo /><p>Der digitale Pass für deine Dinge.</p></div>
+          <div><Logo href={homeHref} /><p>Der digitale Pass für deine Dinge.</p></div>
           <nav className={styles.footerLinks} aria-label="Rechtliches und Service">
             <Link href="/preise">Preise</Link>
             <Link href="/vertrag-widerrufen">Vertrag widerrufen</Link>
