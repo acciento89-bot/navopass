@@ -54,13 +54,14 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
           <span className="pass-id">#{asset.public_id}</span>
         </div>
 
-        <div className="scan-service-box">
-          <div><span className="eyebrow">QR-Service</span><h2>Pass gescannt?</h2><p>{canRecordService ? "Du hast Bearbeitungsrechte für diesen Pass und kannst die Wartung direkt vor Ort dokumentieren." : user ? "Du bist angemeldet, hast für diesen Pass aber nur Ansicht oder keine Bereichsberechtigung." : "Als berechtigter Eigentümer, Mitarbeiter oder Servicepartner kannst du dich anmelden und Wartungen direkt am Objekt dokumentieren."}</p></div>
-          <div className="scan-service-actions">
-            {canRecordService && accessibleAsset ? <Link className="button" href={`/app/assets/${accessibleAsset.id}/service`}>Wartung eintragen →</Link> : !user ? <Link className="button" href={`/login?next=${encodeURIComponent(returnPath)}`}>Für Service anmelden →</Link> : <span className="readonly-service-chip">Nur Ansicht</span>}
+        <article className="panel">
+          <div className="panel-head"><div><span className="eyebrow">QR-Service</span><h2>Pass gescannt?</h2></div>{canRecordService ? <span className="visibility public">Bearbeiten erlaubt</span> : <span className="visibility link">Ansicht</span>}</div>
+          <p className="muted">{canRecordService ? "Du hast Bearbeitungsrechte für diesen Pass und kannst die Wartung direkt vor Ort dokumentieren." : user ? "Du bist angemeldet, hast für diesen Pass aber nur Ansicht oder keine Bereichsberechtigung." : "Als berechtigter Eigentümer, Mitarbeiter oder Servicepartner kannst du dich anmelden und Wartungen direkt am Objekt dokumentieren."}</p>
+          <div className="form-actions">
+            {canRecordService && accessibleAsset ? <Link className="button" href={`/app/assets/${accessibleAsset.id}/service`}>Wartung eintragen →</Link> : !user ? <Link className="button" href={`/login?next=${encodeURIComponent(returnPath)}`}>Für Service anmelden →</Link> : null}
             {accessibleAsset && <Link className="button ghost" href={`/app/assets/${accessibleAsset.id}`}>Im Konto öffnen</Link>}
           </div>
-        </div>
+        </article>
 
         <div className="public-stats">
           <div><small>Seriennummer</small><b>{asset.serial_number || "Nicht angegeben"}</b></div>
