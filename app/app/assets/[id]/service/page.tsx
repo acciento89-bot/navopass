@@ -20,11 +20,12 @@ export default async function ServiceEntryPage({
   const { success, error } = await searchParams;
   const asset = await getOwnedAsset(user.id, id);
   if (!asset) notFound();
+
   if (!roleCanEdit(asset, user.id)) {
     return (
       <main className="app-page"><div className="container"><AppHeader name={user.name} />
         <div className="page-back"><Link href={`/app/assets/${asset.id}`}>← Zum Objektpass</Link></div>
-        <section className="panel"><h1>Nur Lesezugriff</h1><p className="muted">Für einen Service- oder Wartungseintrag brauchst du mindestens die Rolle Bearbeiter.</p></section>
+        <section className="panel"><h1>Nur Lesezugriff</h1><p className="readonly-note">Für einen Service- oder Wartungseintrag brauchst du mindestens die Rolle Bearbeiter.</p></section>
       </div></main>
     );
   }
@@ -37,8 +38,8 @@ export default async function ServiceEntryPage({
         <div className="passport-qr"><img src={`/api/qr?data=${encodeURIComponent(`${(process.env.APP_URL || "https://navopass.de").replace(/\/$/, "")}/p/${asset.public_id}`)}`} alt="QR-Code des Objektpasses" width="132" height="132" /><small>#{asset.public_id}</small></div>
       </section>
 
-      {success === "1" && <p className="form-status-success" role="status">Serviceeintrag gespeichert. Die Historie des Passes wurde aktualisiert.</p>}
-      {error && <p className="form-status-error" role="alert">{error}</p>}
+      {success === "1" && <p className="form-success" role="status">Serviceeintrag gespeichert. Die Historie des Passes wurde aktualisiert.</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
 
       <section className="panel">
         <div className="panel-head"><div><span className="eyebrow">Vor Ort erfassen</span><h2>Wartung / Service dokumentieren</h2></div><span className="count-pill">{formatDate(asset.next_service_date)}</span></div>
@@ -56,7 +57,7 @@ export default async function ServiceEntryPage({
           <label>Arbeiten / Messwerte / Bemerkungen<textarea name="description" maxLength={4000} rows={6} placeholder="z. B. Brenner gereinigt, Filter gewechselt, Messwerte geprüft …" /></label>
           <div className="two-cols">
             <label>Kosten €<input name="cost" inputMode="decimal" placeholder="0,00" /></label>
-            <div className="service-checks">
+            <div className="compact-form" style={{ marginTop: 0 }}>
               <label className="check-label"><input name="isPublic" type="checkbox" defaultChecked /> Im geteilten Pass sichtbar</label>
               <label className="check-label"><input name="advanceService" type="checkbox" defaultChecked /> Nächsten Wartungstermin berechnen</label>
             </div>
