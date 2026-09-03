@@ -1,10 +1,12 @@
 import type { MetadataRoute } from "next";
+import { getLocale } from "@/lib/i18n";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const locale = await getLocale();
   return {
     name: "NavoPass",
     short_name: "NavoPass",
-    description: "Digitale Objekt- und Servicepässe",
+    description: locale === "de" ? "Digitale Objekt- und Servicepässe" : "Digital asset and service passes",
     start_url: "/app",
     display: "standalone",
     background_color: "#f7fbfd",

@@ -65,3 +65,18 @@ jobs:
             exit 1
           fi
           npm run test:smoke
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build NavoPass for iOS Simulator
+        run: >-
+          xcodebuild
+          -project ios/NavoPass.xcodeproj
+          -scheme NavoPass
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build

@@ -310,3 +310,10 @@ textarea { resize: vertical; }
   .passport-head { box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .panel, .status-card { box-shadow: none; break-inside: avoid; }
 }
+/* Language selection is deliberately compact so it remains usable in both
+   the public header and the signed-in application navigation. */
+.language-switcher{display:inline-flex;align-items:center;gap:.32rem;padding:.3rem .55rem;border:1px solid #d7e5ec;border-radius:999px;background:#fff;color:#57707e;font-size:.78rem;font-weight:800;line-height:1}
+.language-switcher button{appearance:none;border:0;padding:0;background:transparent;color:inherit;font:inherit;cursor:pointer;opacity:.52}
+.language-switcher button[aria-current="true"]{color:#0b6e9d;opacity:1}
+.language-switcher button:hover,.language-switcher button:focus-visible{opacity:1}
+.language-switcher.compact{padding:.24rem .45rem;font-size:.72rem}
