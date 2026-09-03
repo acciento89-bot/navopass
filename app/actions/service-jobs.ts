@@ -13,12 +13,27 @@ function text(formData: FormData, key: string, max = 1000) { return String(formD
 function validEmail(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
 const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH"]);
 
+async function validateAssignee(assetId: string, creatorId: string, assignedUserId: string) {
+  if (!assignedUserId || assignedUserId === creatorId) return creatorId;
+  const result = await query<{ id: string }>(
+    `SELECT u.id
+       FROM assets a
+       JOIN workspace_members wm ON wm.workspace_id=a.workspace_id
+       JOIN users u ON u.id=wm.user_id
+      WHERE a.id=$1 AND u.id=$2 AND wm.role IN ('OWNER','ADMIN','EDITOR')
+      LIMIT 1`,
+    [assetId, assignedUserId]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export async function createServiceJobAction(formData: FormData) {
   const user = await requireUser();
   if (user.account_type !== "PROFESSIONAL") redirect("/app/profil?error=Serviceauftraege%20sind%20fuer%20berufliche%20Profile%20vorgesehen.");
   await ensureCustomerSchema();
   const assetId = text(formData, "assetId", 80);
   const customerId = text(formData, "customerId", 80);
+  const assignedUserId = text(formData, "assignedUserId", 80) || user.id;
   const title = text(formData, "title", 180) || "Wartung / Service";
   const scheduledFor = text(formData, "scheduledFor", 40) || null;
   const notes = text(formData, "notes", 2000) || null;
@@ -26,20 +41,35 @@ export async function createServiceJobAction(formData: FormData) {
   const priority = PRIORITIES.has(priorityRaw) ? priorityRaw : "NORMAL";
   const asset = await getOwnedAsset(user.id, assetId);
   if (!asset || !roleCanManage(asset, user.id)) redirect("/app/auftraege?error=Keine%20Berechtigung%20fuer%20diesen%20Objektpass.");
+  const assignee = await validateAssignee(asset.id, user.id, assignedUserId);
+  if (!assignee) redirect("/app/auftraege?error=Techniker%20hat%20keinen%20Bearbeitungszugriff%20auf%20diese%20Anlage.");
   if (customerId) {
     const customer = await query<{ id: string }>("SELECT id FROM service_customers WHERE id=$1 AND user_id=$2 LIMIT 1", [customerId, user.id]);
     if (!customer.rows[0]) redirect("/app/auftraege?error=Kunde%20wurde%20nicht%20gefunden.");
   }
-  await query(`INSERT INTO service_jobs (user_id,customer_id,asset_id,title,scheduled_for,notes,priority) VALUES ($1,$2,$3,$4,$5::timestamptz,$6,$7)`, [user.id, customerId || null, asset.id, title, scheduledFor, notes, priority]);
+  await query(`INSERT INTO service_jobs (user_id,assigned_user_id,customer_id,asset_id,title,scheduled_for,notes,priority) VALUES ($1,$2,$3,$4,$5,$6::timestamptz,$7,$8)`, [user.id, assignee, customerId || null, asset.id, title, scheduledFor, notes, priority]);
   revalidatePath("/app/auftraege");
   if (customerId) revalidatePath(`/app/kunden/${customerId}`);
   redirect("/app/auftraege?success=Serviceauftrag%20wurde%20angelegt.");
 }
 
+export async function assignServiceJobAction(formData: FormData) {
+  const user = await requireUser();
+  const jobId = text(formData, "jobId", 80);
+  const assignedUserId = text(formData, "assignedUserId", 80) || user.id;
+  const job = (await query<{ asset_id: string }>("SELECT asset_id FROM service_jobs WHERE id=$1 AND user_id=$2 LIMIT 1", [jobId, user.id])).rows[0];
+  if (!job) redirect("/app/auftraege?error=Serviceauftrag%20nicht%20gefunden.");
+  const assignee = await validateAssignee(job.asset_id, user.id, assignedUserId);
+  if (!assignee) redirect("/app/auftraege?error=Techniker%20hat%20keinen%20Bearbeitungszugriff%20auf%20diese%20Anlage.");
+  await query("UPDATE service_jobs SET assigned_user_id=$1,updated_at=now() WHERE id=$2 AND user_id=$3 AND status IN ('OPEN','IN_PROGRESS')", [assignee, jobId, user.id]);
+  revalidatePath("/app/auftraege");
+  redirect(`/app/auftraege?success=${encodeURIComponent("Techniker wurde zugewiesen.")}`);
+}
+
 export async function startServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
-  await query("UPDATE service_jobs SET status='IN_PROGRESS',started_at=COALESCE(started_at,now()),updated_at=now() WHERE id=$1 AND user_id=$2 AND status='OPEN'", [jobId, user.id]);
+  await query("UPDATE service_jobs SET status='IN_PROGRESS',started_at=COALESCE(started_at,now()),updated_at=now() WHERE id=$1 AND (user_id=$2 OR assigned_user_id=$2) AND status='OPEN'", [jobId, user.id]);
   revalidatePath("/app/auftraege");
   redirect(`/app/auftraege?success=${encodeURIComponent("Serviceauftrag wurde gestartet.")}`);
 }
@@ -47,7 +77,7 @@ export async function startServiceJobAction(formData: FormData) {
 export async function reopenServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
-  await query("UPDATE service_jobs SET status='OPEN',started_at=NULL,updated_at=now() WHERE id=$1 AND user_id=$2 AND status='IN_PROGRESS'", [jobId, user.id]);
+  await query("UPDATE service_jobs SET status='OPEN',started_at=NULL,updated_at=now() WHERE id=$1 AND (user_id=$2 OR assigned_user_id=$2) AND status='IN_PROGRESS'", [jobId, user.id]);
   revalidatePath("/app/auftraege");
   redirect(`/app/auftraege?success=${encodeURIComponent("Serviceauftrag wurde zurück auf offen gesetzt.")}`);
 }
