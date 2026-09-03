@@ -37,10 +37,10 @@ export default async function SharedReportPage({params}:{params:Promise<{token:s
       FROM service_report_shares s
       JOIN assets a ON a.id=s.asset_id
       JOIN asset_events e ON e.id=s.event_id AND e.asset_id=a.id
-     WHERE s.token_hash=$1 AND s.expires_at>now()
+     WHERE s.token_hash=$1 AND s.expires_at>now() AND s.revoked_at IS NULL
      LIMIT 1`,[hash])).rows[0];
   if(!report)notFound();
-  await query("UPDATE service_report_shares SET opened_at=COALESCE(opened_at,now()) WHERE id=$1",[report.share_id]);
+  await query("UPDATE service_report_shares SET opened_at=COALESCE(opened_at,now()) WHERE id=$1 AND revoked_at IS NULL",[report.share_id]);
   const reportNumber=`NP-${report.event_id.slice(0,8).toUpperCase()}`;
   const customerAddress=[report.report_customer_street,[report.report_customer_postal_code,report.report_customer_city].filter(Boolean).join(" "),report.report_customer_country].filter(Boolean).join(", ");
   const blocks=[["Durchgeführte Arbeiten",report.description],["Verbaute Teile / Material",report.parts_used],["Messwerte",report.measurements],["Mängel / Feststellungen",report.findings],["Empfehlung / weitere Maßnahmen",report.recommendation]] as const;
