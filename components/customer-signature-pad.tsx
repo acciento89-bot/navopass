@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export function CustomerSignaturePad() {
+export function CustomerSignaturePad({ defaultCustomerName }: { defaultCustomerName?: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hasSignature, setHasSignature] = useState(false);
 
@@ -29,61 +29,18 @@ export function CustomerSignaturePad() {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  function position(event: React.PointerEvent<HTMLCanvasElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  }
+  function position(event: React.PointerEvent<HTMLCanvasElement>) { const rect = event.currentTarget.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; }
+  function start(event: React.PointerEvent<HTMLCanvasElement>) { const ctx = event.currentTarget.getContext("2d"); if (!ctx) return; event.currentTarget.setPointerCapture(event.pointerId); const p=position(event); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+  function move(event: React.PointerEvent<HTMLCanvasElement>) { if (!event.currentTarget.hasPointerCapture(event.pointerId)) return; const ctx=event.currentTarget.getContext("2d"); if(!ctx)return; const p=position(event); ctx.lineTo(p.x,p.y); ctx.stroke(); setHasSignature(true); }
+  function end(event: React.PointerEvent<HTMLCanvasElement>) { if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId); syncSignature(event); }
+  function clear() { const canvas=canvasRef.current; if(!canvas)return; const ctx=canvas.getContext("2d"); if(!ctx)return; ctx.clearRect(0,0,canvas.width,canvas.height); setHasSignature(false); const hidden=canvas.parentElement?.querySelector<HTMLInputElement>('input[name="customerSignature"]'); if(hidden)hidden.value=""; }
+  function syncSignature(event: React.SyntheticEvent<HTMLCanvasElement>) { const canvas=canvasRef.current; if(!canvas)return; const hidden=event.currentTarget.parentElement?.querySelector<HTMLInputElement>('input[name="customerSignature"]'); if(hidden)hidden.value=hasSignature||event.type==="pointerup"?canvas.toDataURL("image/png"):""; }
 
-  function start(event: React.PointerEvent<HTMLCanvasElement>) {
-    const canvas = event.currentTarget;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.setPointerCapture(event.pointerId);
-    const point = position(event);
-    ctx.beginPath();
-    ctx.moveTo(point.x, point.y);
-  }
-
-  function move(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    const ctx = event.currentTarget.getContext("2d");
-    if (!ctx) return;
-    const point = position(event);
-    ctx.lineTo(point.x, point.y);
-    ctx.stroke();
-    setHasSignature(true);
-  }
-
-  function end(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }
-
-  function clear() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasSignature(false);
-  }
-
-  function syncSignature(event: React.FormEvent<HTMLDivElement>) {
-    const root = event.currentTarget;
-    const hidden = root.querySelector<HTMLInputElement>('input[name="customerSignature"]');
-    const canvas = canvasRef.current;
-    if (hidden && canvas) hidden.value = hasSignature ? canvas.toDataURL("image/png") : "";
-  }
-
-  return <div className="compact-form" style={{ marginTop: 0 }} onPointerUp={syncSignature} onPointerCancel={syncSignature}>
-    <label>Kundenname für Bestätigung<input name="customerName" maxLength={180} placeholder="optional" /></label>
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 7 }}>
-        <span style={{ color: "#61798b", fontSize: ".78rem", fontWeight: 800 }}>Kundenunterschrift</span>
-        <button className="button ghost small" type="button" onClick={clear}>Löschen</button>
-      </div>
-      <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end} style={{ width: "100%", touchAction: "none", border: "1px solid #dce8ef", borderRadius: 14, background: "#fff" }} aria-label="Feld für Kundenunterschrift" />
-      <input type="hidden" name="customerSignature" />
-      <small className="muted">Optional. Die Unterschrift wird ausschließlich diesem Serviceeintrag zugeordnet.</small>
+  return <div className="compact-form" style={{ marginTop: 0 }}>
+    <label>Kundenname für Bestätigung<input name="customerName" maxLength={180} defaultValue={defaultCustomerName||""} placeholder="optional" /></label>
+    <div><div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:7 }}><span style={{ color:"#61798b",fontSize:".78rem",fontWeight:800 }}>Kundenunterschrift</span><button className="button ghost small" type="button" onClick={clear}>Löschen</button></div>
+      <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end} style={{ width:"100%",touchAction:"none",border:"1px solid #dce8ef",borderRadius:14,background:"#fff" }} aria-label="Feld für Kundenunterschrift" />
+      <input type="hidden" name="customerSignature"/><small className="muted">Optional. Die Unterschrift wird ausschließlich diesem Serviceeintrag zugeordnet.</small>
     </div>
   </div>;
 }
