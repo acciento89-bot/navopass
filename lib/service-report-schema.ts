@@ -14,6 +14,7 @@ export const SERVICE_REPORT_SCHEMA_STATEMENTS = [
   `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_serial_number text`,
   `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_location text`,
   `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_public_id text`,
+  `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_next_service_date date`,
   `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_name text`,
   `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_contact_name text`,
   `ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_email text`,
