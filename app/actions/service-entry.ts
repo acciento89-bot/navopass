@@ -112,6 +112,12 @@ export async function recordServiceEntryAction(formData: FormData) {
       } else {
         await client.query("UPDATE assets SET updated_at=now() WHERE id=$1", [asset.id]);
       }
+      await client.query(
+        `UPDATE asset_events
+            SET report_next_service_date=(SELECT next_service_date FROM assets WHERE id=$1)
+          WHERE id=$2`,
+        [asset.id,newEventId]
+      );
       if (jobId) {
         await client.query(
           `UPDATE service_jobs SET status='DONE',completed_event_id=$1,completed_at=now(),updated_at=now()
