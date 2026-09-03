@@ -20,6 +20,9 @@ type Customer = {
   country: string;
   notes: string | null;
   asset_count: number;
+  overdue_count: number;
+  due_30_count: number;
+  unplanned_count: number;
 };
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
@@ -32,7 +35,10 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   await ensureCustomerSchema();
   const customers = (await query<Customer>(`
     SELECT c.id,c.name,c.contact_name,c.email,c.phone,c.street,c.postal_code,c.city,c.country,c.notes,
-           count(a.id)::int AS asset_count
+           count(a.id)::int AS asset_count,
+           count(a.id) FILTER (WHERE a.next_service_date < current_date)::int AS overdue_count,
+           count(a.id) FILTER (WHERE a.next_service_date >= current_date AND a.next_service_date <= current_date + 30)::int AS due_30_count,
+           count(a.id) FILTER (WHERE a.next_service_date IS NULL)::int AS unplanned_count
       FROM service_customers c
       LEFT JOIN assets a ON a.service_customer_id=c.id AND a.archived_at IS NULL
      WHERE c.user_id=$1
@@ -40,11 +46,13 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
      ORDER BY c.name ASC
   `, [user.id])).rows;
   const assets = (await listAssets(user.id)).filter(asset => !asset.archived_at && roleCanManage(asset, user.id));
-  const assignedRows = await query<{ id: string; service_customer_id: string | null }>("SELECT id,service_customer_id FROM assets WHERE id=ANY($1::uuid[])", [assets.map(asset => asset.id)]);
+  const assignedRows = assets.length > 0
+    ? await query<{ id: string; service_customer_id: string | null }>("SELECT id,service_customer_id FROM assets WHERE id=ANY($1::uuid[])", [assets.map(asset => asset.id)])
+    : { rows: [] as { id: string; service_customer_id: string | null }[] };
   const assignedByAsset = new Map(assignedRows.rows.map(row => [row.id, row.service_customer_id]));
 
   return <main className="app-page"><div className="container"><AppHeader name={user.name} />
-    <section className="settings-head"><span className="eyebrow">Firmenmodus</span><h1>Kunden & Standorte</h1><p>Gruppiere Objektpässe nach Kunde oder Einsatzort, damit Heizungen, Klimaanlagen und andere Anlagen nicht in einer einzigen ungeordneten Liste landen.</p></section>
+    <section className="settings-head"><span className="eyebrow">Firmenmodus</span><h1>Kunden & Standorte</h1><p>Gruppiere Objektpässe nach Kunde oder Einsatzort und erkenne sofort, wo Wartungen anstehen.</p></section>
     {success && <p className="form-success" role="status">{success}</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
 
@@ -77,7 +85,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       {customers.length === 0 ? <p className="muted">Noch keine Kunden oder Standorte angelegt.</p> : <div className="timeline">{customers.map(customer => {
         const customerAssets = assets.filter(asset => assignedByAsset.get(asset.id) === customer.id);
         const address = [customer.street, [customer.postal_code, customer.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-        return <div className="timeline-item" key={customer.id}><span className="timeline-dot"></span><div style={{ width: "100%" }}><div className="timeline-line"><b>{customer.name}</b><span>{customer.asset_count} {customer.asset_count === 1 ? "Anlage" : "Anlagen"}</span></div>{address && <p>{address}</p>}{customer.contact_name && <small>{customer.contact_name}{customer.phone ? ` · ${customer.phone}` : ""}{customer.email ? ` · ${customer.email}` : ""}</small>}<div className="form-actions" style={{ justifyContent: "flex-start", marginTop: 10, flexWrap: "wrap" }}>{customerAssets.map(asset => <Link className="button ghost small" href={`/app/assets/${asset.id}`} key={asset.id}>{asset.name}</Link>)}<form action={deleteCustomerAction}><input type="hidden" name="customerId" value={customer.id} /><button className="button ghost small" type="submit">Kunde löschen</button></form></div></div></div>;
+        return <div className="timeline-item" key={customer.id}><span className="timeline-dot"></span><div style={{ width: "100%" }}><div className="timeline-line"><b>{customer.name}</b><span>{customer.asset_count} {customer.asset_count === 1 ? "Anlage" : "Anlagen"}</span></div>{address && <p>{address}</p>}{customer.contact_name && <small>{customer.contact_name}{customer.phone ? ` · ${customer.phone}` : ""}{customer.email ? ` · ${customer.email}` : ""}</small>}<div className="form-actions" style={{ justifyContent: "flex-start", marginTop: 10, flexWrap: "wrap" }}>{customer.overdue_count > 0 && <span className="access-chip">{customer.overdue_count} überfällig</span>}{customer.due_30_count > 0 && <span className="interval-chip">{customer.due_30_count} in 30 Tagen</span>}{customer.unplanned_count > 0 && <span className="count-pill">{customer.unplanned_count} ohne Termin</span>}<Link className="button small" href={`/app/service?customer=${customer.id}`}>Wartungen öffnen</Link>{customerAssets.map(asset => <Link className="button ghost small" href={`/app/assets/${asset.id}`} key={asset.id}>{asset.name}</Link>)}<form action={deleteCustomerAction}><input type="hidden" name="customerId" value={customer.id} /><button className="button ghost small" type="submit">Kunde löschen</button></form></div></div></div>;
       })}</div>}
     </section>
   </div></main>;
