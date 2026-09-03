@@ -1,5 +1,6 @@
 import { Pool, types, type PoolClient, type PoolConfig, type QueryResultRow } from "pg";
 import { BILLING_SCHEMA_STATEMENTS } from "@/lib/billing-schema";
+import { CUSTOMER_SCHEMA_STATEMENTS } from "@/lib/customer-schema-statements";
 import { SCHEMA_STATEMENTS } from "@/lib/schema";
 import { SECURITY_SCHEMA_STATEMENTS } from "@/lib/security-schema";
 import { SERVICE_ACCESS_SCHEMA_STATEMENTS } from "@/lib/service-access-schema";
@@ -9,7 +10,16 @@ import { STICKER_ORDER_SCHEMA_STATEMENTS } from "@/lib/sticker-order-schema";
 
 types.setTypeParser(1082, (value) => value);
 
-const ALL_SCHEMA_STATEMENTS = [...SCHEMA_STATEMENTS, ...BILLING_SCHEMA_STATEMENTS, ...SECURITY_SCHEMA_STATEMENTS, ...SERVICE_ACCESS_SCHEMA_STATEMENTS, ...STICKER_ORDER_SCHEMA_STATEMENTS, ...SERVICE_REPORT_SCHEMA_STATEMENTS, ...SERVICE_WORKFLOW_SCHEMA_STATEMENTS] as const;
+const ALL_SCHEMA_STATEMENTS = [
+  ...SCHEMA_STATEMENTS,
+  ...BILLING_SCHEMA_STATEMENTS,
+  ...SECURITY_SCHEMA_STATEMENTS,
+  ...SERVICE_ACCESS_SCHEMA_STATEMENTS,
+  ...STICKER_ORDER_SCHEMA_STATEMENTS,
+  ...CUSTOMER_SCHEMA_STATEMENTS,
+  ...SERVICE_REPORT_SCHEMA_STATEMENTS,
+  ...SERVICE_WORKFLOW_SCHEMA_STATEMENTS,
+] as const;
 
 const globalForDb = globalThis as unknown as {
   navopassPool?: Pool;
