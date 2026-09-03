@@ -10,7 +10,7 @@ import styles from "@/app/public-pages.module.css";
 
 export const metadata: Metadata = {
   title: "Preise",
-  description: "NavoPass Preise für Free, Plus, Family und Business.",
+  description: "NavoPass Preise für Free, Plus, Family und Business – vom digitalen Objektpass bis zum Servicebetrieb.",
 };
 
 const order: Plan[] = ["FREE", "PLUS", "FAMILY", "BUSINESS"];
@@ -18,7 +18,7 @@ const order: Plan[] = ["FREE", "PLUS", "FAMILY", "BUSINESS"];
 function features(plan: Plan) {
   const item = PLAN_CONFIG[plan];
   const shared = item.maxSharedWorkspaces === null ? "Unbegrenzt gemeinsame Bereiche" : item.maxSharedWorkspaces > 0 ? `${item.maxSharedWorkspaces} gemeinsame Bereiche` : "Persönlicher Bereich";
-  return [
+  const base = [
     `${item.maxAssets.toLocaleString("de-DE")} Pässe`,
     `${formatStorage(item.maxStorageBytes)} Speicher`,
     `${item.maxSeats} Nutzer`,
@@ -26,6 +26,16 @@ function features(plan: Plan) {
     "QR-Code & Freigabelinks",
     "Wartungen, Historie & Kalenderexport",
   ];
+  if (plan === "BUSINESS") {
+    base.push(
+      "Kunden & Standorte organisieren",
+      "Serviceaufträge, Prioritäten & Technikerzuweisung",
+      "Wochenplanung mit Einsatzdauer & Konfliktschutz",
+      "Wartungsberichte mit Material, Messwerten & Unterschrift",
+      "PDF-Druckansicht & geschützte Kundenfreigabe",
+    );
+  }
+  return base;
 }
 
 export default async function PricingPage({ searchParams }: { searchParams: Promise<{ billingError?: string; billingCancelled?: string }> }) {
@@ -38,8 +48,8 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
       <main className={styles.main}>
         <section className={styles.hero}>
           <span className={styles.eyebrow}>Preise & Limits</span>
-          <h1>Einfach starten. Mitwachsen, wenn du mehr brauchst.</h1>
-          <p>Grundfunktionen bleiben in jedem Tarif erhalten. Bezahlt wird für mehr Pässe, Speicher und Zusammenarbeit – nicht dafür, grundlegende Funktionen künstlich freizuschalten.</p>
+          <h1>Vom ersten Objektpass bis zum digitalen Kundendienst.</h1>
+          <p>Free, Plus und Family wachsen mit deinen privaten Dingen und gemeinsamen Bereichen. Business ist für Teams und Servicebetriebe dimensioniert, die Kunden, Anlagen, Einsätze, Techniker und Wartungsberichte in einem Ablauf organisieren.</p>
         </section>
 
         {params.billingError && <div className={styles.billingError}><b>Buchung nicht gestartet.</b> {params.billingError}</div>}
@@ -51,14 +61,14 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
             const monthly = formatEuro(item.monthlyCents);
             const yearly = formatEuro(item.yearlyCents);
             const savings = Math.max(0, item.monthlyCents * 12 - item.yearlyCents);
-            const featured = plan === "FAMILY";
+            const featured = plan === "BUSINESS";
             const current = user?.plan === plan;
             const monthlyReady = plan !== "FREE" && isStripeCheckoutConfigured(plan, "monthly");
             const yearlyReady = plan !== "FREE" && isStripeCheckoutConfigured(plan, "yearly");
 
             return (
               <article className={`${styles.priceCard} ${featured ? styles.featured : ""}`} key={plan}>
-                <span className={styles.badge}>{current ? "Aktueller Tarif" : plan === "FREE" ? "Kostenlos" : featured ? "Empfohlen" : plan === "BUSINESS" ? "Für Teams" : "Privat"}</span>
+                <span className={styles.badge}>{current ? "Aktueller Tarif" : plan === "FREE" ? "Kostenlos" : plan === "BUSINESS" ? "Service & Teams" : plan === "FAMILY" ? "Familie" : "Privat"}</span>
                 <h2>{item.name}</h2>
                 <div className={styles.price}><strong>{monthly}</strong><small>/ Monat</small></div>
                 {item.yearlyCents > 0 ? <p className={styles.annual}>{yearly} / Jahr · spart {formatEuro(savings)}</p> : <p className={styles.annual}>Dauerhaft ohne Grundgebühr</p>}
@@ -88,6 +98,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
           })}
         </section>
 
+        <div className={styles.notice}><strong>Business umfasst deutlich mehr als Objektpässe:</strong> Der Tarif ist auf Kunden- und Anlagenverwaltung, Service-Disposition, Techniker-Einsätze und nachvollziehbare Wartungsberichte ausgelegt. Die konkreten Limits bleiben transparent über Nutzer, Pässe und Speicher definiert.</div>
         <div className={styles.notice}><strong>Umsatzsteuer:</strong> {KLEINUNTERNEHMER_NOTICE}</div>
         <div className={styles.notice}><strong>Abos:</strong> Vor jeder neuen kostenpflichtigen Bestellung zeigt NavoPass Tarif, Abrechnungszeitraum, Kündigungs- und Widerrufsinformationen noch einmal an. Die Zahlungsdaten werden anschließend sicher über Stripe verarbeitet. Tarifstatus und Zugriffsrechte werden serverseitig aus dem bestätigten Stripe-Abonnement übernommen.</div>
         <div className="business-contact">Mehr als 1.000 Pässe oder 10 Nutzer benötigt? <Link href="/kontakt">Individuelles Angebot anfragen →</Link></div>

@@ -48,6 +48,33 @@ const steps = [
   },
 ];
 
+const businessWorkflow = [
+  {
+    number: "1",
+    title: "Kunden & Anlagen organisieren",
+    text: "Ordne Objektpässe Kunden und Standorten zu und behalte Wartungen, Dokumente und QR-Codes zentral im Blick.",
+    icon: <Icon size={31}><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h6M9 14h6M9 18h6"/></Icon>,
+  },
+  {
+    number: "2",
+    title: "Einsätze disponieren",
+    text: "Plane Termine und Dauer, setze Prioritäten, weise Techniker zu und verhindere Doppelbelegungen automatisch.",
+    icon: <Icon size={31}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 14h3M13 14h3M8 18h3"/></Icon>,
+  },
+  {
+    number: "3",
+    title: "Vor Ort dokumentieren",
+    text: "Erfasse Arbeiten, Material, Messwerte, Mängel, Empfehlungen, Arbeitszeit und Kundenunterschrift direkt am Einsatz.",
+    icon: <Icon size={31}><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5M9 12h6M9 16h4"/><path d="m14 18 2 2 4-5"/></Icon>,
+  },
+  {
+    number: "4",
+    title: "Bericht fertig & versenden",
+    text: "Erzeuge den Servicebericht mit PDF-Druckansicht und sende dem Kunden einen geschützten Bericht-Link.",
+    icon: <Icon size={31}><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7M8 17h8"/></Icon>,
+  },
+];
+
 const assetTypes = [
   { label: "Wärmepumpe", icon: <Icon size={36}><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="4"/><path d="M15 9h3M15 12h3M15 15h3"/></Icon> },
   { label: "Fahrrad", icon: <Icon size={36}><circle cx="6" cy="17" r="4"/><circle cx="18" cy="17" r="4"/><path d="m6 17 4-8 3 8h5M8 13h7M10 9h4M14 9l2-3"/></Icon> },
@@ -67,10 +94,12 @@ const privateBenefits = [
 ];
 
 const businessBenefits = [
-  "Inventar und Betriebsmittel digital erfassen",
-  "Wartungsintervalle und Prüfungen im Griff behalten",
-  "Teams mit Admin-, Bearbeiter- und Betrachterrollen organisieren",
-  "Zeit sparen und nachvollziehbar dokumentieren",
+  "Kunden, Standorte und Anlagen digital organisieren",
+  "Serviceaufträge mit Terminen, Prioritäten und Technikerzuweisung disponieren",
+  "Wochenplanung mit Einsatzdauer und Schutz vor Doppelbelegungen nutzen",
+  "Wartungen mit Material, Messwerten, Mängeln und Unterschrift dokumentieren",
+  "Serviceberichte als PDF ausgeben und geschützt an Kunden senden",
+  "QR-Aufkleber, Servicezugänge und nachvollziehbare Anlagenhistorien verwalten",
 ];
 
 export default function HomePage() {
@@ -82,7 +111,7 @@ export default function HomePage() {
           <nav className={styles.nav} aria-label="Hauptnavigation">
             <a href="#produkt">Produkt</a>
             <a href="#zielgruppen">Für wen?</a>
-            <a href="#so-gehts">So funktioniert&apos;s</a>
+            <a href="#firmen-service">Firmen-Service</a>
             <Link href="/preise">Preise</Link>
             <a href="#start">Loslegen</a>
           </nav>
@@ -102,18 +131,18 @@ export default function HomePage() {
           <div className={styles.heroText}>
             <div className={styles.heroBadge}>
               <Icon size={16}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/></Icon>
-              Der digitale Pass für alles, was dir gehört
+              Digitale Pässe für Privat, Familie und Servicebetriebe
             </div>
             <h1>Alles, was dir gehört,<br/>bekommt seinen eigenen<br/><em>digitalen Pass.</em></h1>
-            <p>Dokumente, Garantien, Reparaturen, Wartungen und Erinnerungen – sicher an einem Ort, per QR-Code verfügbar und auf Wunsch gemeinsam mit Familie oder Team verwaltet.</p>
+            <p>Privat bündelt NavoPass Dokumente, Garantien, Reparaturen und Wartungen. Unternehmen nutzen dieselben Objektpässe zusätzlich für Kundenverwaltung, Service-Disposition, Techniker-Einsätze und fertige Wartungsberichte.</p>
             <div className={styles.heroActions}>
               <Link href="/register" className={styles.primaryCta}>Kostenlos starten <span>→</span></Link>
-              <a href="#demo" className={styles.secondaryCta}>Beispiel ansehen <span className={styles.play}>▷</span></a>
+              <a href="#firmen-service" className={styles.secondaryCta}>Firmenfunktionen ansehen <span className={styles.play}>↓</span></a>
             </div>
             <div className={styles.trustBar}>
               <span><Icon size={17}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon> Datenschutz im Fokus</span>
               <span><Icon size={17}><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></Icon> In Sekunden eingerichtet</span>
-              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Startphase aktuell 0 €</span>
+              <span><Icon size={17}><path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 20 11a4 4 0 0 1-2.5 8Z"/></Icon> Browserbasiert & QR-fähig</span>
             </div>
           </div>
 
@@ -205,8 +234,8 @@ export default function HomePage() {
 
         <article className={styles.audienceCard}>
           <div className={styles.audienceContent}>
-            <span>FÜR TEAMS & UNTERNEHMEN</span>
-            <h2>Effizient verwalten. Gemeinsam arbeiten.</h2>
+            <span>FÜR SERVICEBETRIEBE & TEAMS</span>
+            <h2>Vom Objektpass bis zum fertigen Servicebericht.</h2>
             <ul>
               {businessBenefits.map((item) => <li key={item}><i>✓</i>{item}</li>)}
             </ul>
@@ -217,11 +246,29 @@ export default function HomePage() {
         </article>
       </section>
 
+      <section className={styles.stepsSection} id="firmen-service">
+        <div className={styles.sectionHeading}>
+          <span>NAVOPASS FÜR DEN KUNDENDIENST</span>
+          <h2>Ein durchgängiger Ablauf statt einzelner QR-Pässe</h2>
+        </div>
+        <div className={styles.stepsGrid}>
+          {businessWorkflow.map((step, index) => (
+            <article className={styles.stepCard} key={step.title}>
+              <div className={styles.stepNumber}>{step.number}</div>
+              {index < businessWorkflow.length - 1 && <div className={styles.connector} aria-hidden="true" />}
+              <div className={styles.stepIcon}>{step.icon}</div>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className={styles.ctaPanel} id="start">
         <div className={styles.ctaShield}><Icon size={28}><path d="M12 3 5 6v5.5c0 4.2 2.8 6.9 7 8.9 4.2-2 7-4.7 7-8.9V6z"/><path d="m9 12 2 2 4-4"/></Icon></div>
         <div>
-          <h2>Bereit für deinen ersten digitalen Pass?</h2>
-          <p>Starte aktuell kostenlos und erweitere NavoPass bei Bedarf um Haushalt oder Team.</p>
+          <h2>Vom ersten Pass bis zum digitalen Kundendienst.</h2>
+          <p>Starte mit NavoPass und wähle den Tarif passend zu Haushalt, Team oder Servicebetrieb.</p>
         </div>
         <div className={styles.ctaButtons}>
           <Link href="/register" className={styles.primaryCta}>Kostenlos starten <span>→</span></Link>
@@ -231,9 +278,9 @@ export default function HomePage() {
 
       <footer className={styles.footer} id="footer">
         <div className={styles.footerInner}>
-          <div className={styles.footerBrand}><Brand /><p>Der digitale Pass für deine Dinge.</p></div>
-          <div><b>Produkt</b><a href="#so-gehts">Funktionen</a><a href="#zielgruppen">Für wen?</a><Link href="/preise">Preise</Link><Link href="/register">Kostenlos starten</Link></div>
-          <div><b>Ressourcen</b><Link href="/kontakt">Kontakt & Support</Link><a href="#produkt">Service & Fristen</a><a href="#produkt">QR-Pässe</a></div>
+          <div className={styles.footerBrand}><Brand /><p>Digitale Objektpässe und Serviceprozesse.</p></div>
+          <div><b>Produkt</b><a href="#so-gehts">Digitale Pässe</a><a href="#firmen-service">Firmen-Service</a><Link href="/preise">Preise</Link><Link href="/register">Kostenlos starten</Link></div>
+          <div><b>Ressourcen</b><Link href="/kontakt">Kontakt & Support</Link><a href="#firmen-service">Service & Disposition</a><a href="#produkt">QR-Pässe</a></div>
           <div><b>Unternehmen</b><a href="https://kamilunavo.com">Kamilunavo</a><a href="https://kamilunavo.com/support">Kamilunavo Support</a></div>
           <div><b>Rechtliches</b><Link href="/datenschutz">Datenschutz</Link><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link><span>© 2026 Kamilunavo</span></div>
         </div>
