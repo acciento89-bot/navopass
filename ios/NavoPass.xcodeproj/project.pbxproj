@@ -17,6 +17,8 @@
 		A10000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* Assets.xcassets */; };
 		A1000000000000000000000A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* Localizable.strings */; };
 		A1000000000000000000000B /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000E /* InfoPlist.strings */; };
+		A1000000000000000000000C /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* DesignSystem.swift */; };
+		A1000000000000000000000D /* WebPortalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* WebPortalView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +36,8 @@
 		B1000000000000000000000D /* NavoPass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NavoPass.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000000000000000000000F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		B10000000000000000000010 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		B10000000000000000000011 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* WebPortalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPortalView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,7 +46,7 @@
 
 /* Begin PBXGroup section */
 		D10000000000000000000001 = {isa = PBXGroup; children = (D10000000000000000000002 /* NavoPass */, D10000000000000000000003 /* Products */); sourceTree = "<group>"; };
-		D10000000000000000000002 /* NavoPass */ = {isa = PBXGroup; path = NavoPass; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000003, B10000000000000000000004, B10000000000000000000005, B10000000000000000000006, B10000000000000000000007, B10000000000000000000008, B10000000000000000000009, B1000000000000000000000A, B1000000000000000000000E); };
+		D10000000000000000000002 /* NavoPass */ = {isa = PBXGroup; path = NavoPass; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000003, B10000000000000000000004, B10000000000000000000005, B10000000000000000000006, B10000000000000000000007, B10000000000000000000008, B10000000000000000000011, B10000000000000000000012, B10000000000000000000009, B1000000000000000000000A, B1000000000000000000000E); };
 		D10000000000000000000003 /* Products */ = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (B1000000000000000000000D /* NavoPass.app */); };
 /* End PBXGroup section */
 
@@ -59,7 +63,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		C10000000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008, A1000000000000000000000C, A1000000000000000000000D); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
