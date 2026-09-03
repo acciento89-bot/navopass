@@ -2,7 +2,7 @@ export const SERVICE_WORKFLOW_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS service_jobs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    customer_id uuid REFERENCES service_customers(id) ON DELETE SET NULL,
+    customer_id uuid,
     asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
     title text NOT NULL,
     scheduled_for timestamptz,
@@ -15,6 +15,7 @@ export const SERVICE_WORKFLOW_SCHEMA_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS service_jobs_user_status_idx ON service_jobs(user_id,status,scheduled_for)`,
   `CREATE INDEX IF NOT EXISTS service_jobs_asset_idx ON service_jobs(asset_id,created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS service_jobs_customer_idx ON service_jobs(customer_id,created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS service_report_shares (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
