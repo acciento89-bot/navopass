@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDocuments, getEvents, getShareableAsset } from "@/lib/assets";
+import { getCurrentUser } from "@/lib/auth";
+import { getAccessibleAssetByPublicId, getDocuments, getEvents, getShareableAsset, roleCanEdit } from "@/lib/assets";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Logo } from "@/components/logo";
 import fileStyles from "@/app/file-cards.module.css";
@@ -34,9 +36,13 @@ export async function generateMetadata({ params }: { params: Promise<{ publicId:
 
 export default async function PublicPassPage({ params }: { params: Promise<{ publicId: string }> }) {
   const { publicId } = await params;
-  const asset = await getShareableAsset(publicId.toUpperCase());
+  const normalizedPublicId = publicId.toUpperCase();
+  const asset = await getShareableAsset(normalizedPublicId);
   if (!asset) notFound();
-  const [events, documents] = await Promise.all([getEvents(asset.id, true), getDocuments(asset.id, true)]);
+  const [events, documents, user] = await Promise.all([getEvents(asset.id, true), getDocuments(asset.id, true), getCurrentUser()]);
+  const accessibleAsset = user ? await getAccessibleAssetByPublicId(user.id, normalizedPublicId) : null;
+  const canRecordService = Boolean(user && accessibleAsset && roleCanEdit(accessibleAsset, user.id));
+  const returnPath = `/p/${asset.public_id}`;
 
   return (
     <main className="public-page">
@@ -46,6 +52,14 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
           <div className="asset-avatar large">{asset.name.slice(0, 2).toUpperCase()}</div>
           <div><span className="asset-category">{asset.category}</span><h1>{asset.name}</h1><p>{[asset.manufacturer, asset.model].filter(Boolean).join(" · ") || "NavoPass Objekt"}</p></div>
           <span className="pass-id">#{asset.public_id}</span>
+        </div>
+
+        <div className="scan-service-box">
+          <div><span className="eyebrow">QR-Service</span><h2>Pass gescannt?</h2><p>{canRecordService ? "Du hast Bearbeitungsrechte für diesen Pass und kannst die Wartung direkt vor Ort dokumentieren." : user ? "Du bist angemeldet, hast für diesen Pass aber nur Ansicht oder keine Bereichsberechtigung." : "Als berechtigter Eigentümer, Mitarbeiter oder Servicepartner kannst du dich anmelden und Wartungen direkt am Objekt dokumentieren."}</p></div>
+          <div className="scan-service-actions">
+            {canRecordService && accessibleAsset ? <Link className="button" href={`/app/assets/${accessibleAsset.id}/service`}>Wartung eintragen →</Link> : !user ? <Link className="button" href={`/login?next=${encodeURIComponent(returnPath)}`}>Für Service anmelden →</Link> : <span className="readonly-service-chip">Nur Ansicht</span>}
+            {accessibleAsset && <Link className="button ghost" href={`/app/assets/${accessibleAsset.id}`}>Im Konto öffnen</Link>}
+          </div>
         </div>
 
         <div className="public-stats">
@@ -80,7 +94,7 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
             )}
           </article>
         </div>
-        <footer className="public-foot"><p>Dieser digitale Objektpass wird mit NavoPass bereitgestellt. Der Eigentümer bestimmt selbst, welche Informationen sichtbar sind.</p></footer>
+        <footer className="public-foot"><p>Dieser digitale Objektpass wird mit NavoPass bereitgestellt. Der Eigentümer bestimmt selbst, welche Informationen sichtbar sind. Schreibzugriff ist ausschließlich für angemeldete und berechtigte Bereichsmitglieder möglich.</p></footer>
       </section>
     </main>
   );
