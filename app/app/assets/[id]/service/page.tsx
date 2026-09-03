@@ -8,10 +8,10 @@ import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function ServiceEntryPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ success?: string; error?: string }> }) {
+export default async function ServiceEntryPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ success?: string; error?: string; event?: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const { success, error } = await searchParams;
+  const { success, error, event } = await searchParams;
   const asset = await getOwnedAsset(user.id, id);
   if (!asset) notFound();
   const providerIdentity = user.account_type === "PROFESSIONAL" && user.company_name ? [user.company_name, user.name, user.professional_title].filter(Boolean).join(" · ") : user.name;
@@ -25,9 +25,9 @@ export default async function ServiceEntryPage({ params, searchParams }: { param
     <div className="page-back"><Link href={`/app/assets/${asset.id}`}>← Zum Objektpass</Link></div>
     <section className="passport-head"><div className="passport-title"><div className="passport-kicker"><span>{asset.category}</span><span>{asset.service_access ? "Externe Servicefreigabe" : "Service-Erfassung"}</span></div><h1>{asset.name}</h1><p>{[asset.manufacturer, asset.model, asset.serial_number].filter(Boolean).join(" · ")}</p>{manageable&&<div className="passport-actions"><Link className="button light small" href={`/app/assets/${asset.id}/service-zugang`}>Servicezugriff verwalten</Link></div>}</div><div className="passport-qr"><img src={`/api/qr?data=${encodeURIComponent(`${(process.env.APP_URL || "https://navopass.de").replace(/\/$/, "")}/p/${asset.public_id}`)}`} alt="QR-Code des Objektpasses" width="132" height="132" /><small>#{asset.public_id}</small></div></section>
     {asset.service_access&&asset.service_access_expires_at&&<p className="form-tip"><b>Zeitlich begrenzter Zugriff:</b><span>Deine Servicefreigabe endet automatisch am {new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short"}).format(new Date(asset.service_access_expires_at))}.</span></p>}
-    {success === "1" && <p className="form-success" role="status">Serviceeintrag gespeichert. Die Historie des Passes wurde aktualisiert.</p>}{error && <p className="form-error" role="alert">{error}</p>}
+    {success === "1" && <div className="form-success" role="status"><b>Serviceeintrag gespeichert.</b> Die Historie des Passes wurde aktualisiert.{event && <div style={{ marginTop: 10 }}><Link className="button small" href={`/app/assets/${asset.id}/service/${event}/bericht`}>Wartungsprotokoll öffnen / PDF</Link></div>}</div>}{error && <p className="form-error" role="alert">{error}</p>}
     <section className="panel"><div className="panel-head"><div><span className="eyebrow">Vor Ort erfassen</span><h2>Wartung / Service dokumentieren</h2></div><span className="count-pill">{formatDate(asset.next_service_date)}</span></div>
-      <p className="muted">Der Eintrag wird mit deinem angemeldeten NavoPass-Konto protokolliert. So bleibt nachvollziehbar, wer die Historie ergänzt hat.</p>
+      <p className="muted">Der Eintrag wird mit deinem angemeldeten NavoPass-Konto protokolliert. So bleibt nachvollziehbar, wer die Historie ergänzt hat. Nach dem Speichern kannst du daraus direkt ein druckbares Wartungsprotokoll bzw. PDF erstellen.</p>
       <form action={recordServiceEntryAction} className="compact-form event-form"><input type="hidden" name="assetId" value={asset.id} />
         <div className="two-cols"><label>Titel<input name="title" maxLength={180} defaultValue="Wartung durchgeführt" required /></label><label>Typ<select name="eventType" defaultValue="SERVICE"><option value="SERVICE">Wartung / Service</option><option value="REPAIR">Reparatur</option><option value="INSPECTION">Prüfung / Inspektion</option><option value="NOTE">Notiz</option></select></label></div>
         <div className="two-cols"><label>Datum<input name="eventDate" type="date" /></label><label>Firma / Techniker<input name="provider" maxLength={200} defaultValue={providerIdentity} /></label></div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { updateCustomerAction } from "@/app/actions/customers";
 import { AppHeader } from "@/components/app-header";
 import { requireUser } from "@/lib/auth";
 import { listAssets, roleCanManage } from "@/lib/assets";
@@ -39,9 +40,10 @@ function serviceStatus(value: string | null) {
   return { label: `in ${days} Tagen`, tone: "ok" };
 }
 
-export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CustomerDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ success?: string; error?: string }> }) {
   const user = await requireUser();
   const { id } = await params;
+  const { success, error } = await searchParams;
   if (user.account_type !== "PROFESSIONAL") notFound();
   await ensureCustomerSchema();
 
@@ -83,6 +85,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <div className="form-actions" style={{ flexWrap: "wrap" }}><Link className="button" href={`/app/service?customer=${customer.id}`}>Wartungen öffnen</Link><Link className="button ghost" href="/app/scannen">QR scannen</Link></div>
     </section>
 
+    {success && <p className="form-success" role="status">{success}</p>}
+    {error && <p className="form-error" role="alert">{error}</p>}
+
     <section className="pass-status-grid">
       <article className="status-card"><span>Anlagen</span><b>{assets.length}</b><small>zugeordnet</small></article>
       <article className={`status-card ${overdue > 0 ? "danger" : "ok"}`}><span>Überfällig</span><b>{overdue}</b><small>Wartungen</small></article>
@@ -99,6 +104,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </dl></article>
       <article className="panel"><div className="panel-head"><div><span className="eyebrow">Hinweise</span><h2>Vor Ort</h2></div></div><p className="note-box">{customer.notes || "Noch keine Hinweise zum Zugang oder Standort hinterlegt."}</p></article>
     </section>
+
+    <details className="panel" style={{ marginBottom: 22 }}>
+      <summary className="text-link" style={{ cursor: "pointer", fontWeight: 850 }}>Kundendaten bearbeiten</summary>
+      <form action={updateCustomerAction} className="compact-form" style={{ marginTop: 18 }}>
+        <input type="hidden" name="customerId" value={customer.id} />
+        <label>Kunde / Objektbezeichnung<input name="name" defaultValue={customer.name} required maxLength={180} /></label>
+        <div className="two-cols"><label>Ansprechpartner<input name="contactName" defaultValue={customer.contact_name || ""} maxLength={180} /></label><label>E-Mail<input name="email" type="email" defaultValue={customer.email || ""} maxLength={220} /></label></div>
+        <div className="two-cols"><label>Telefon<input name="phone" defaultValue={customer.phone || ""} maxLength={80} /></label><label>Land<select name="country" defaultValue={customer.country || "DE"}><option value="DE">Deutschland</option><option value="AT">Österreich</option><option value="CH">Schweiz</option><option value="PL">Polen</option></select></label></div>
+        <label>Straße & Hausnummer<input name="street" defaultValue={customer.street || ""} maxLength={180} /></label>
+        <div className="two-cols"><label>PLZ<input name="postalCode" defaultValue={customer.postal_code || ""} maxLength={30} /></label><label>Ort<input name="city" defaultValue={customer.city || ""} maxLength={140} /></label></div>
+        <label>Vor-Ort-Hinweise<textarea name="notes" rows={4} defaultValue={customer.notes || ""} maxLength={1500} /></label>
+        <button className="button" type="submit">Kundendaten speichern</button>
+      </form>
+    </details>
 
     <section className="panel">
       <div className="panel-head"><div><span className="eyebrow">Anlagenbestand</span><h2>Objektpässe & Service</h2></div><span className="count-pill">{assets.length}</span></div>

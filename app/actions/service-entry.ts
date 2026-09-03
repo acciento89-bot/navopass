@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getOwnedAsset, roleCanEdit } from "@/lib/assets";
-import { query, transaction } from "@/lib/db";
+import { transaction } from "@/lib/db";
 
 const EVENT_TYPES = new Set(["SERVICE", "REPAIR", "INSPECTION", "NOTE"]);
 
@@ -38,13 +38,15 @@ export async function recordServiceEntryAction(formData: FormData) {
   const costCents = Number.isFinite(parsedCost) ? Math.round(parsedCost * 100) : null;
   const advanceService = checked(formData, "advanceService") && eventType === "SERVICE";
   const isPublic = checked(formData, "isPublic");
+  let eventId = "";
 
   try {
-    await transaction(async (client) => {
-      await client.query(
+    eventId = await transaction(async (client) => {
+      const inserted = await client.query<{ id: string }>(
         `INSERT INTO asset_events
           (asset_id,title,event_type,event_date,description,provider,cost_cents,is_public,created_by_user_id,created_by_name)
-         VALUES ($1,$2,$3,COALESCE($4::date,current_date),$5,$6,$7,$8,$9,$10)`,
+         VALUES ($1,$2,$3,COALESCE($4::date,current_date),$5,$6,$7,$8,$9,$10)
+         RETURNING id`,
         [asset.id, title, eventType, eventDate, description, provider, costCents, isPublic, user.id, user.name]
       );
 
@@ -59,6 +61,7 @@ export async function recordServiceEntryAction(formData: FormData) {
       } else {
         await client.query("UPDATE assets SET updated_at=now() WHERE id=$1", [asset.id]);
       }
+      return inserted.rows[0].id;
     });
   } catch (error) {
     console.error("NavoPass service entry failed", { assetId: asset.id, userId: user.id, error });
@@ -69,6 +72,7 @@ export async function recordServiceEntryAction(formData: FormData) {
   revalidatePath("/app/service");
   revalidatePath(`/app/assets/${asset.id}`);
   revalidatePath(`/app/assets/${asset.id}/service`);
+  revalidatePath(`/app/assets/${asset.id}/service/${eventId}/bericht`);
   revalidatePath(`/p/${asset.public_id}`);
-  redirect(`/app/assets/${asset.id}/service?success=1`);
+  redirect(`/app/assets/${asset.id}/service?success=1&event=${encodeURIComponent(eventId)}`);
 }
