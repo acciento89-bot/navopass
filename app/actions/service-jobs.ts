@@ -12,6 +12,7 @@ import { brandedMail, isMailConfigured, sendMail } from "@/lib/mailer";
 function text(formData: FormData, key: string, max = 1000) { return String(formData.get(key) ?? "").trim().slice(0, max); }
 function validEmail(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
 const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH"]);
+const SERVICE_SLOT_MINUTES = 60;
 
 async function validateAssignee(assetId: string, creatorId: string, assignedUserId: string) {
   if (!assignedUserId || assignedUserId === creatorId) return creatorId;
@@ -25,6 +26,26 @@ async function validateAssignee(assetId: string, creatorId: string, assignedUser
     [assetId, assignedUserId]
   );
   return result.rows[0]?.id ?? null;
+}
+
+async function hasScheduleConflict(assignedUserId: string, scheduledFor: string | null, excludeJobId?: string) {
+  if (!scheduledFor) return false;
+  const result = await query<{ id: string }>(
+    `SELECT id
+       FROM service_jobs
+      WHERE assigned_user_id=$1
+        AND status IN ('OPEN','IN_PROGRESS')
+        AND scheduled_for IS NOT NULL
+        AND ($3::uuid IS NULL OR id<>$3::uuid)
+        AND abs(extract(epoch FROM (scheduled_for-$2::timestamptz))) < $4
+      LIMIT 1`,
+    [assignedUserId, scheduledFor, excludeJobId || null, SERVICE_SLOT_MINUTES * 60]
+  );
+  return Boolean(result.rows[0]);
+}
+
+function scheduleConflictRedirect() {
+  redirect(`/app/auftraege?error=${encodeURIComponent("Der Techniker hat innerhalb von 60 Minuten bereits einen anderen offenen Einsatz. Bitte Termin oder Techniker ändern.")}`);
 }
 
 export async function createServiceJobAction(formData: FormData) {
@@ -43,6 +64,7 @@ export async function createServiceJobAction(formData: FormData) {
   if (!asset || !roleCanManage(asset, user.id)) redirect("/app/auftraege?error=Keine%20Berechtigung%20fuer%20diesen%20Objektpass.");
   const assignee = await validateAssignee(asset.id, user.id, assignedUserId);
   if (!assignee) redirect("/app/auftraege?error=Techniker%20hat%20keinen%20Bearbeitungszugriff%20auf%20diese%20Anlage.");
+  if (await hasScheduleConflict(assignee, scheduledFor)) scheduleConflictRedirect();
   if (customerId) {
     const customer = await query<{ id: string }>("SELECT id FROM service_customers WHERE id=$1 AND user_id=$2 LIMIT 1", [customerId, user.id]);
     if (!customer.rows[0]) redirect("/app/auftraege?error=Kunde%20wurde%20nicht%20gefunden.");
@@ -57,10 +79,11 @@ export async function assignServiceJobAction(formData: FormData) {
   const user = await requireUser();
   const jobId = text(formData, "jobId", 80);
   const assignedUserId = text(formData, "assignedUserId", 80) || user.id;
-  const job = (await query<{ asset_id: string }>("SELECT asset_id FROM service_jobs WHERE id=$1 AND user_id=$2 LIMIT 1", [jobId, user.id])).rows[0];
+  const job = (await query<{ asset_id: string; scheduled_for: string | null }>("SELECT asset_id,scheduled_for FROM service_jobs WHERE id=$1 AND user_id=$2 LIMIT 1", [jobId, user.id])).rows[0];
   if (!job) redirect("/app/auftraege?error=Serviceauftrag%20nicht%20gefunden.");
   const assignee = await validateAssignee(job.asset_id, user.id, assignedUserId);
   if (!assignee) redirect("/app/auftraege?error=Techniker%20hat%20keinen%20Bearbeitungszugriff%20auf%20diese%20Anlage.");
+  if (await hasScheduleConflict(assignee, job.scheduled_for, jobId)) scheduleConflictRedirect();
   await query("UPDATE service_jobs SET assigned_user_id=$1,updated_at=now() WHERE id=$2 AND user_id=$3 AND status IN ('OPEN','IN_PROGRESS')", [assignee, jobId, user.id]);
   revalidatePath("/app/auftraege");
   redirect(`/app/auftraege?success=${encodeURIComponent("Techniker wurde zugewiesen.")}`);
@@ -71,11 +94,10 @@ export async function rescheduleServiceJobAction(formData: FormData) {
   const jobId = text(formData, "jobId", 80);
   const scheduledFor = text(formData, "scheduledFor", 40);
   if (!jobId || !scheduledFor) redirect(`/app/auftraege?error=${encodeURIComponent("Bitte einen neuen Termin auswählen.")}`);
-  const result = await query(
-    "UPDATE service_jobs SET scheduled_for=$1::timestamptz,updated_at=now() WHERE id=$2 AND user_id=$3 AND status IN ('OPEN','IN_PROGRESS') RETURNING id",
-    [scheduledFor, jobId, user.id]
-  );
-  if (!result.rows[0]) redirect(`/app/auftraege?error=${encodeURIComponent("Auftrag konnte nicht neu terminiert werden.")}`);
+  const job = (await query<{ assigned_user_id: string | null }>("SELECT assigned_user_id FROM service_jobs WHERE id=$1 AND user_id=$2 AND status IN ('OPEN','IN_PROGRESS') LIMIT 1", [jobId, user.id])).rows[0];
+  if (!job) redirect(`/app/auftraege?error=${encodeURIComponent("Auftrag konnte nicht neu terminiert werden.")}`);
+  if (job.assigned_user_id && await hasScheduleConflict(job.assigned_user_id, scheduledFor, jobId)) scheduleConflictRedirect();
+  await query("UPDATE service_jobs SET scheduled_for=$1::timestamptz,updated_at=now() WHERE id=$2 AND user_id=$3 AND status IN ('OPEN','IN_PROGRESS')", [scheduledFor, jobId, user.id]);
   revalidatePath("/app/auftraege");
   redirect(`/app/auftraege?success=${encodeURIComponent("Termin wurde aktualisiert.")}`);
 }
