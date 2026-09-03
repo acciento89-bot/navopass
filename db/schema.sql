@@ -13,9 +13,17 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_acknowledged_at timestamptz;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'FREE';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type text NOT NULL DEFAULT 'PRIVATE';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS professional_title text;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_plan_check') THEN
     ALTER TABLE users ADD CONSTRAINT users_plan_check CHECK (plan IN ('FREE','PLUS','FAMILY','BUSINESS'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_account_type_check') THEN
+    ALTER TABLE users ADD CONSTRAINT users_account_type_check CHECK (account_type IN ('PRIVATE','PROFESSIONAL'));
   END IF;
 END $$;
 
