@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { recordServiceEntryAction } from "@/app/actions/service-entry";
 import { AppHeader } from "@/components/app-header";
 import { requireUser } from "@/lib/auth";
-import { getOwnedAsset, roleCanEdit } from "@/lib/assets";
+import { getOwnedAsset, roleCanEdit, roleCanManage } from "@/lib/assets";
 import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,7 @@ export default async function ServiceEntryPage({ params, searchParams }: { param
   const asset = await getOwnedAsset(user.id, id);
   if (!asset) notFound();
   const providerIdentity = user.account_type === "PROFESSIONAL" && user.company_name ? [user.company_name, user.name, user.professional_title].filter(Boolean).join(" · ") : user.name;
+  const manageable = roleCanManage(asset, user.id);
 
   if (!roleCanEdit(asset, user.id)) {
     return <main className="app-page"><div className="container"><AppHeader name={user.name} /><div className="page-back"><Link href={`/app/assets/${asset.id}`}>← Zum Objektpass</Link></div><section className="panel"><h1>Nur Lesezugriff</h1><p className="readonly-note">Für einen Service- oder Wartungseintrag brauchst du mindestens die Rolle Bearbeiter.</p></section></div></main>;
@@ -22,7 +23,8 @@ export default async function ServiceEntryPage({ params, searchParams }: { param
 
   return <main className="app-page"><div className="container"><AppHeader name={user.name} />
     <div className="page-back"><Link href={`/app/assets/${asset.id}`}>← Zum Objektpass</Link></div>
-    <section className="passport-head"><div className="passport-title"><div className="passport-kicker"><span>{asset.category}</span><span>Service-Erfassung</span></div><h1>{asset.name}</h1><p>{[asset.manufacturer, asset.model, asset.serial_number].filter(Boolean).join(" · ")}</p></div><div className="passport-qr"><img src={`/api/qr?data=${encodeURIComponent(`${(process.env.APP_URL || "https://navopass.de").replace(/\/$/, "")}/p/${asset.public_id}`)}`} alt="QR-Code des Objektpasses" width="132" height="132" /><small>#{asset.public_id}</small></div></section>
+    <section className="passport-head"><div className="passport-title"><div className="passport-kicker"><span>{asset.category}</span><span>{asset.service_access ? "Externe Servicefreigabe" : "Service-Erfassung"}</span></div><h1>{asset.name}</h1><p>{[asset.manufacturer, asset.model, asset.serial_number].filter(Boolean).join(" · ")}</p>{manageable&&<div className="passport-actions"><Link className="button light small" href={`/app/assets/${asset.id}/service-zugang`}>Servicezugriff verwalten</Link></div>}</div><div className="passport-qr"><img src={`/api/qr?data=${encodeURIComponent(`${(process.env.APP_URL || "https://navopass.de").replace(/\/$/, "")}/p/${asset.public_id}`)}`} alt="QR-Code des Objektpasses" width="132" height="132" /><small>#{asset.public_id}</small></div></section>
+    {asset.service_access&&asset.service_access_expires_at&&<p className="form-tip"><b>Zeitlich begrenzter Zugriff:</b><span>Deine Servicefreigabe endet automatisch am {new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short"}).format(new Date(asset.service_access_expires_at))}.</span></p>}
     {success === "1" && <p className="form-success" role="status">Serviceeintrag gespeichert. Die Historie des Passes wurde aktualisiert.</p>}{error && <p className="form-error" role="alert">{error}</p>}
     <section className="panel"><div className="panel-head"><div><span className="eyebrow">Vor Ort erfassen</span><h2>Wartung / Service dokumentieren</h2></div><span className="count-pill">{formatDate(asset.next_service_date)}</span></div>
       <p className="muted">Der Eintrag wird mit deinem angemeldeten NavoPass-Konto protokolliert. So bleibt nachvollziehbar, wer die Historie ergänzt hat.</p>
