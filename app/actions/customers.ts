@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { getOwnedAsset, roleCanManage } from "@/lib/assets";
 import { ensureCustomerSchema } from "@/lib/customer-schema";
 import { query } from "@/lib/db";
+import { hasBusinessService } from "@/lib/entitlements";
 
 function text(formData: FormData, key: string, max = 300) {
   return String(formData.get(key) ?? "").trim().slice(0, max);
@@ -21,9 +22,14 @@ function customerUrl(customerId: string, message?: string, error = false) {
   return `/app/kunden/${customerId}?${error ? "error" : "success"}=${encodeURIComponent(message)}`;
 }
 
+function requireBusinessCustomerAccess(user: Awaited<ReturnType<typeof requireUser>>) {
+  if (user.account_type !== "PROFESSIONAL") redirect(customersUrl("Der Kundenbereich ist für berufliche Profile vorgesehen.", true));
+  if (!hasBusinessService(user)) redirect(`/preise?billingError=${encodeURIComponent("Kunden- und Standortverwaltung ist im Business-Tarif enthalten.")}`);
+}
+
 export async function createCustomerAction(formData: FormData) {
   const user = await requireUser();
-  if (user.account_type !== "PROFESSIONAL") redirect(customersUrl("Der Kundenbereich ist für berufliche Profile vorgesehen.", true));
+  requireBusinessCustomerAccess(user);
   await ensureCustomerSchema();
 
   const name = text(formData, "name", 180);
@@ -33,18 +39,7 @@ export async function createCustomerAction(formData: FormData) {
   await query(
     `INSERT INTO service_customers (user_id,name,contact_name,email,phone,street,postal_code,city,country,notes)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [
-      user.id,
-      name,
-      text(formData, "contactName", 180) || null,
-      text(formData, "email", 220) || null,
-      text(formData, "phone", 80) || null,
-      text(formData, "street", 180) || null,
-      text(formData, "postalCode", 30) || null,
-      text(formData, "city", 140) || null,
-      country,
-      text(formData, "notes", 1500) || null,
-    ]
+    [user.id,name,text(formData,"contactName",180)||null,text(formData,"email",220)||null,text(formData,"phone",80)||null,text(formData,"street",180)||null,text(formData,"postalCode",30)||null,text(formData,"city",140)||null,country,text(formData,"notes",1500)||null]
   );
   revalidatePath("/app/kunden");
   redirect(customersUrl("Kunde wurde angelegt."));
@@ -52,7 +47,7 @@ export async function createCustomerAction(formData: FormData) {
 
 export async function updateCustomerAction(formData: FormData) {
   const user = await requireUser();
-  if (user.account_type !== "PROFESSIONAL") redirect("/app");
+  requireBusinessCustomerAccess(user);
   await ensureCustomerSchema();
 
   const customerId = text(formData, "customerId", 80);
@@ -66,22 +61,8 @@ export async function updateCustomerAction(formData: FormData) {
   if (country.length !== 2) redirect(customerUrl(customerId, "Bitte ein gültiges Land auswählen.", true));
 
   await query(
-    `UPDATE service_customers
-        SET name=$1,contact_name=$2,email=$3,phone=$4,street=$5,postal_code=$6,city=$7,country=$8,notes=$9,updated_at=now()
-      WHERE id=$10 AND user_id=$11`,
-    [
-      name,
-      text(formData, "contactName", 180) || null,
-      text(formData, "email", 220) || null,
-      text(formData, "phone", 80) || null,
-      text(formData, "street", 180) || null,
-      text(formData, "postalCode", 30) || null,
-      text(formData, "city", 140) || null,
-      country,
-      text(formData, "notes", 1500) || null,
-      customerId,
-      user.id,
-    ]
+    `UPDATE service_customers SET name=$1,contact_name=$2,email=$3,phone=$4,street=$5,postal_code=$6,city=$7,country=$8,notes=$9,updated_at=now() WHERE id=$10 AND user_id=$11`,
+    [name,text(formData,"contactName",180)||null,text(formData,"email",220)||null,text(formData,"phone",80)||null,text(formData,"street",180)||null,text(formData,"postalCode",30)||null,text(formData,"city",140)||null,country,text(formData,"notes",1500)||null,customerId,user.id]
   );
   revalidatePath("/app/kunden");
   revalidatePath(`/app/kunden/${customerId}`);
@@ -91,7 +72,7 @@ export async function updateCustomerAction(formData: FormData) {
 
 export async function assignAssetToCustomerAction(formData: FormData) {
   const user = await requireUser();
-  if (user.account_type !== "PROFESSIONAL") redirect(customersUrl("Der Kundenbereich ist für berufliche Profile vorgesehen.", true));
+  requireBusinessCustomerAccess(user);
   await ensureCustomerSchema();
   const assetId = text(formData, "assetId", 80);
   const customerId = text(formData, "customerId", 80);
@@ -111,7 +92,7 @@ export async function assignAssetToCustomerAction(formData: FormData) {
 
 export async function deleteCustomerAction(formData: FormData) {
   const user = await requireUser();
-  if (user.account_type !== "PROFESSIONAL") redirect(customersUrl("Der Kundenbereich ist für berufliche Profile vorgesehen.", true));
+  requireBusinessCustomerAccess(user);
   await ensureCustomerSchema();
   const customerId = text(formData, "customerId", 80);
   if (!customerId) redirect(customersUrl("Kunde fehlt.", true));
