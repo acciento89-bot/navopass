@@ -175,6 +175,29 @@ CREATE TABLE IF NOT EXISTS asset_events (
 );
 ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS created_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS created_by_name text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS labor_minutes integer;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS parts_used text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS measurements text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS findings text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS recommendation text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS customer_name text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS customer_signature text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS customer_signed_at timestamptz;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_name text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_category text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_manufacturer text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_model text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_serial_number text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_location text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_asset_public_id text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_next_service_date date;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_name text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_contact_name text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_email text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_street text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_postal_code text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_city text;
+ALTER TABLE asset_events ADD COLUMN IF NOT EXISTS report_customer_country text;
 CREATE INDEX IF NOT EXISTS asset_events_asset_id_idx ON asset_events(asset_id);
 CREATE INDEX IF NOT EXISTS asset_events_created_by_idx ON asset_events(created_by_user_id);
 
@@ -190,3 +213,61 @@ CREATE TABLE IF NOT EXISTS asset_documents (
 );
 ALTER TABLE asset_documents ADD COLUMN IF NOT EXISTS size_bytes bigint NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS asset_documents_asset_id_idx ON asset_documents(asset_id);
+
+CREATE TABLE IF NOT EXISTS service_customers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  contact_name text,
+  email text,
+  phone text,
+  street text,
+  postal_code text,
+  city text,
+  country text NOT NULL DEFAULT 'DE',
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS service_customers_user_idx ON service_customers(user_id, name);
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS service_customer_id uuid REFERENCES service_customers(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS assets_service_customer_idx ON assets(service_customer_id);
+
+CREATE TABLE IF NOT EXISTS service_jobs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  assigned_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  customer_id uuid,
+  asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  scheduled_for timestamptz,
+  estimated_duration_minutes integer NOT NULL DEFAULT 60 CHECK (estimated_duration_minutes BETWEEN 15 AND 720),
+  notes text,
+  priority text NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('LOW','NORMAL','HIGH')),
+  status text NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','IN_PROGRESS','DONE','CANCELLED')),
+  completed_event_id uuid REFERENCES asset_events(id) ON DELETE SET NULL,
+  completed_at timestamptz,
+  started_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS service_jobs_user_status_idx ON service_jobs(user_id,status,scheduled_for);
+CREATE INDEX IF NOT EXISTS service_jobs_assigned_status_idx ON service_jobs(assigned_user_id,status,scheduled_for);
+CREATE INDEX IF NOT EXISTS service_jobs_asset_idx ON service_jobs(asset_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS service_jobs_customer_idx ON service_jobs(customer_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS service_jobs_schedule_idx ON service_jobs(user_id,scheduled_for) WHERE status IN ('OPEN','IN_PROGRESS');
+
+CREATE TABLE IF NOT EXISTS service_report_shares (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  event_id uuid NOT NULL REFERENCES asset_events(id) ON DELETE CASCADE,
+  created_by uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_email text NOT NULL,
+  token_hash text NOT NULL UNIQUE,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  opened_at timestamptz,
+  revoked_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS service_report_shares_event_idx ON service_report_shares(event_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS service_report_shares_expiry_idx ON service_report_shares(expires_at);
