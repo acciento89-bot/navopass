@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getAccessibleAssetByPublicId, getDocuments, getEvents, getShareableAsset, roleCanEdit } from "@/lib/assets";
+import { getAccessibleAssetByPublicId, getDocuments, getEvents, getShareableAsset, roleCanRecordService } from "@/lib/assets";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Logo } from "@/components/logo";
 import fileStyles from "@/app/file-cards.module.css";
@@ -41,7 +41,7 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
   if (!asset) notFound();
   const [events, documents, user] = await Promise.all([getEvents(asset.id, true), getDocuments(asset.id, true), getCurrentUser()]);
   const accessibleAsset = user ? await getAccessibleAssetByPublicId(user.id, normalizedPublicId) : null;
-  const canRecordService = Boolean(user && accessibleAsset && roleCanEdit(accessibleAsset, user.id));
+  const canRecordService = Boolean(user && accessibleAsset && roleCanRecordService(accessibleAsset, user.id));
   const returnPath = `/p/${asset.public_id}`;
 
   return (
@@ -55,8 +55,8 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
         </div>
 
         <article className="panel">
-          <div className="panel-head"><div><span className="eyebrow">QR-Service</span><h2>Pass gescannt?</h2></div>{canRecordService ? <span className="visibility public">Bearbeiten erlaubt</span> : <span className="visibility link">Ansicht</span>}</div>
-          <p className="muted">{canRecordService ? "Du hast Bearbeitungsrechte für diesen Pass und kannst die Wartung direkt vor Ort dokumentieren." : user ? "Du bist angemeldet, hast für diesen Pass aber nur Ansicht oder keine Bereichsberechtigung." : "Als berechtigter Eigentümer, Mitarbeiter oder Servicepartner kannst du dich anmelden und Wartungen direkt am Objekt dokumentieren."}</p>
+          <div className="panel-head"><div><span className="eyebrow">QR-Service</span><h2>Pass gescannt?</h2></div>{canRecordService ? <span className="visibility public">Service erlaubt</span> : <span className="visibility link">Ansicht</span>}</div>
+          <p className="muted">{canRecordService ? "Du hast Servicezugriff und kannst Wartung, Reparatur oder Prüfung direkt vor Ort dokumentieren. Stammdaten, Dateien und Freigaben bleiben geschützt." : user ? "Du bist angemeldet, hast für diesen Pass aber keinen Service-Schreibzugriff." : "Als berechtigter Eigentümer, Mitarbeiter oder Servicepartner kannst du dich anmelden und Wartungen direkt am Objekt dokumentieren."}</p>
           <div className="form-actions">
             {canRecordService && accessibleAsset ? <Link className="button" href={`/app/assets/${accessibleAsset.id}/service`}>Wartung eintragen →</Link> : !user ? <Link className="button" href={`/login?next=${encodeURIComponent(returnPath)}`}>Für Service anmelden →</Link> : null}
             {accessibleAsset && <Link className="button ghost" href={`/app/assets/${accessibleAsset.id}`}>Im Konto öffnen</Link>}
@@ -95,7 +95,7 @@ export default async function PublicPassPage({ params }: { params: Promise<{ pub
             )}
           </article>
         </div>
-        <footer className="public-foot"><p>Dieser digitale Objektpass wird mit NavoPass bereitgestellt. Der Eigentümer bestimmt selbst, welche Informationen sichtbar sind. Schreibzugriff ist ausschließlich für angemeldete und berechtigte Bereichsmitglieder möglich.</p></footer>
+        <footer className="public-foot"><p>Dieser digitale Objektpass wird mit NavoPass bereitgestellt. Der Eigentümer bestimmt selbst, welche Informationen sichtbar sind. Servicezugriff erlaubt ausschließlich die Dokumentation von Serviceereignissen; Stammdaten und Dokumentverwaltung bleiben geschützt.</p></footer>
       </section>
     </main>
   );
