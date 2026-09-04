@@ -3,16 +3,18 @@ import { NavoPassContactForm } from "@/components/navopass-contact-form";
 import { PublicShell } from "@/components/public-shell";
 import styles from "@/app/public-pages.module.css";
 
+
 function LegalLinks() {
   return <nav className={styles.legalLinks} aria-label="More legal information"><Link href="/impressum">Legal notice</Link><Link href="/datenschutz">Privacy</Link><Link href="/nutzungsbedingungen">Terms of use</Link><Link href="/preise">Pricing</Link><Link href="/vertrag-widerrufen">Withdraw from contract</Link><Link href="/vertrag-kuendigen">Cancel subscription</Link><Link href="/kontakt">Contact</Link></nav>;
 }
+
 
 export function EnglishImprint() {
   return <PublicShell><main className={styles.main}>
     <section className={styles.hero}><span className={styles.eyebrow}>Legal information</span><h1>Legal notice</h1><p>Provider information pursuant to Section 5 of the German Digital Services Act (DDG) for the NavoPass digital service.</p></section>
     <article className={styles.legal}>
       <section><h2>Service provider</h2><p><strong>Piotr Kaminski – Kamilunavo</strong><br />Sole proprietorship<br />Otto-Braun-Straße 14<br />40595 Düsseldorf<br />Germany</p></section>
-      <section><h2>Contact</h2><p>Email: <a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a><br />Phone: <a href="tel:+4915114082801">+49 151 14082801</a></p><div className={styles.methods}><div className={styles.method}><span>Direct contact</span><a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a></div><div className={styles.method}><span>Phone</span><a href="tel:+4915114082801">+49 151 14082801</a></div><div className={styles.method}><span>Additional electronic contact method</span><b>Contact form below</b></div></div><NavoPassContactForm locale="en" /></section>
+      <section><h2>Contact</h2><p>Email: <a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a></p><div className={styles.methods}><div className={styles.method}><span>Direct contact</span><a href="mailto:contact@kamilunavo.com">contact@kamilunavo.com</a></div><div className={styles.method}><span>Additional electronic contact method</span><b>Contact form below</b></div></div><NavoPassContactForm locale="en" /></section>
       <section><h2>Registers and identification numbers</h2><p>There is currently no entry in the commercial register.</p><p>German business identification number pursuant to Section 139c of the Fiscal Code: <strong>DE464473083-00001</strong></p><p>No VAT identification number pursuant to Section 27a of the German VAT Act has currently been issued.</p></section>
       <section><h2>Consumer dispute resolution</h2><p>We are neither willing nor obliged to participate in dispute resolution proceedings before a consumer arbitration board.</p><p>A link to the former EU online dispute resolution platform is no longer provided because the platform has been discontinued and its underlying EU regulation repealed.</p></section>
       <section><h2>Content and copyright</h2><p>Texts, designs, graphics, logos, product names and other NavoPass content are protected under applicable law. Any use beyond statutory limitations requires the prior consent of the respective rights holder.</p></section>
@@ -20,6 +22,7 @@ export function EnglishImprint() {
     </article>
   </main></PublicShell>;
 }
+
 
 export function EnglishPrivacy() {
   return <PublicShell><main className={styles.main}>
@@ -49,6 +52,7 @@ export function EnglishPrivacy() {
   </main></PublicShell>;
 }
 
+
 export function EnglishTerms() {
   return <PublicShell><main className={styles.main}>
     <section className={styles.hero}><span className={styles.eyebrow}>NavoPass terms</span><h1>Terms of use</h1><p>These terms govern registration and the free or paid use of the NavoPass digital service.</p></section>
@@ -59,21 +63,3 @@ export function EnglishTerms() {
       <section><h2>4. Billing interval, term and renewal</h2><p>Paid plans are billed monthly or annually in advance. The subscription continues until cancelled or otherwise ended; a new billing period begins unless it is cancelled.</p><p>Ordinary cancellation is possible at the end of the current billing period. The specific ending appears in the account or Stripe customer portal. Statutory withdrawal and special termination rights remain unaffected.</p></section>
       <section><h2>5. Payment and Stripe</h2><p>Stripe handles payments and billing. Available payment methods are shown in Checkout. NavoPass stores no complete card numbers. If payment fails, Stripe may retry or request an updated payment method. Paid access may be restricted according to the confirmed subscription status, but existing NavoPass data is not automatically deleted solely because of a plan restriction.</p></section>
       <section><h2>6. Features and plan limits</h2><p>NavoPass supports digital asset passes, product information, photos, documents, history, maintenance and warranty deadlines, calendar exports, and collaboration in personal, household and team workspaces.</p><p>Plans may limit passes, storage, seats and shared workspaces. If a downgrade leaves the account above a limit, existing data generally remains available, while new passes, uploads, members or workspaces may be blocked until the account is within its current limits or upgraded.</p></section>
-      <section><h2>7. Start of paid service and withdrawal</h2><p>Consumers generally have a statutory right of withdrawal for paid distance contracts. Details, the withdrawal notice and the electronic <Link href="/vertrag-widerrufen">Withdraw from contract</Link> function remain available online.</p><p>Before checkout, users who want paid functions immediately are expressly asked whether performance should begin before the withdrawal period expires. Any consequences of later withdrawal, including statutory compensation for service already provided at the consumer’s express request, are governed exclusively by law.</p></section>
-      <section><h2>8. Cancellation and contract management</h2><p>Signed-in users can manage subscriptions through the linked Stripe customer portal. The <Link href="/vertrag-kuendigen">Cancel subscription</Link> function is also permanently available without signing in.</p><p>An ordinary cancellation for the next possible date is scheduled automatically for the end of the current billing period when the Stripe subscription can be identified unambiguously. Other requested endings and extraordinary cancellations are recorded with their content and timestamp and processed under contractual and statutory requirements. Receipt is confirmed electronically.</p></section>
-      <section><h2>9. Plan changes</h2><p>Changes to an existing paid plan or billing interval use the provided Stripe or NavoPass functions. Applicable prices and billing consequences are displayed before the change. The normal change flow is not intended to create a parallel second NavoPass subscription.</p></section>
-      <section><h2>10. User content and rights</h2><p>Users retain their rights in uploaded or entered content. They grant Kamilunavo only the technical rights required to store, process and display it and, where enabled by the user, make it accessible through sharing links or QR codes.</p><p>Users may upload or share only content for which they hold the necessary rights and whose processing does not violate law or third-party rights.</p></section>
-      <section><h2>11. Sharing, QR codes and workspaces</h2><p>Users control pass visibility. “By link / QR” permits access by anyone with the link; “Public” may permit access without signing in. Restrictive visibility should be chosen for confidential or personal data. In shared workspaces, assigned roles control viewing, editing and administration. Workspace owners are responsible for appropriate invitations and roles.</p></section>
-      <section><h2>12. Prohibited use</h2><p>Prohibited activities include unlawful content, malware, infrastructure attacks, bypassing security, disruptive automated access, spam, misuse of third-party data and actions that impair NavoPass stability or security.</p></section>
-      <section><h2>13. Availability, maintenance and changes</h2><p>Kamilunavo aims to operate NavoPass reliably but cannot guarantee uninterrupted availability. Maintenance, security measures, technical faults or events beyond its control may temporarily restrict use. Features may evolve; statutory requirements apply to changes affecting ongoing consumer contracts and digital products.</p></section>
-      <section><h2>14. Deadlines and reminders</h2><p>Maintenance, warranty and other deadline functions are organisational aids. Users remain responsible for verifying entered data and monitoring legally or technically relevant deadlines. NavoPass does not replace mandatory inspections, professional maintenance or binding manufacturer information.</p></section>
-      <section><h2>15. Account deletion</h2><p>The account can be deleted in Settings once any shared workspaces requiring cleanup have been resolved. If an active NavoPass subscription exists, NavoPass attempts to end it through Stripe first. If that fails technically, deletion is stopped so that no active subscription remains without an associated account. Statutory retention, billing, refund and evidence duties remain unaffected.</p></section>
-      <section><h2>16. Liability</h2><p>Liability is governed by law. For slight negligence involving an essential contractual duty, liability is limited, where legally permissible, to foreseeable damage typical of the contract. Intent, gross negligence, injury to life, body or health and mandatory statutory liability remain unaffected.</p></section>
-      <section><h2>17. Privacy</h2><p>Information about personal data processing, including Stripe payment processing, is provided in the <Link href="/datenschutz">Privacy policy</Link>.</p></section>
-      <section><h2>18. Consumer dispute resolution</h2><p>Kamilunavo is neither willing nor obliged to participate in dispute resolution before a consumer arbitration board. The former EU online dispute resolution platform has been discontinued, so no outdated ODR link is provided.</p></section>
-      <section><h2>19. Governing law</h2><p>German law applies, excluding the UN Convention on Contracts for the International Sale of Goods. For consumers, this choice applies only insofar as it does not remove protection under mandatory rules of their habitual country of residence. Statutory jurisdiction rules remain unaffected.</p></section>
-      <section><h2>20. Changes to these terms</h2><p>These terms may be updated if NavoPass or the legal framework changes. Existing contracts are changed only within statutory requirements. A free plan does not automatically become paid without a new express paid order.</p></section>
-      <LegalLinks /><p className={styles.meta}>Last updated: 17 August 2026 · Version 2026-08-17-paid-v1</p>
-    </article>
-  </main></PublicShell>;
-}
