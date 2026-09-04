@@ -19,6 +19,10 @@ enum APIError: LocalizedError {
             case "STORAGE_LIMIT_REACHED": return String(localized: "Your storage limit has been reached.")
             case "EMAIL_IN_USE": return String(localized: "This email address is already in use.")
             case "FORBIDDEN": return String(localized: "You do not have permission for this action.")
+            case "INVALID_CONFIRMATION": return String(localized: "Enter the required confirmation word.")
+            case "INVALID_PASSWORD": return String(localized: "The password is incorrect.")
+            case "SHARED_WORKSPACES_EXIST": return String(localized: "Delete or transfer your shared workspaces before deleting the account.")
+            case "SUBSCRIPTION_CANCEL_FAILED": return String(localized: "Your subscription could not be cancelled. Your account was not deleted.")
             default: return String(localized: "The request could not be completed.")
             }
         }
@@ -237,6 +241,16 @@ final class APIClient: ObservableObject {
         try await refreshUser()
     }
 
+    func deleteAccount(password: String, confirmation: String) async throws {
+        var action = MobileAction(action: "deleteAccount")
+        action.password = password
+        action.confirmation = confirmation
+        try await performAction(action)
+        user = nil
+        assets = []
+        errorMessage = nil
+    }
+
     func createWorkspace(name: String, kind: String) async throws {
         var action = MobileAction(action: "createWorkspace")
         action.name = name
@@ -384,6 +398,8 @@ private struct MobileAction: Encodable {
     var inviteId: String?
     var name: String?
     var email: String?
+    var password: String?
+    var confirmation: String?
     var title: String?
     var category: String?
     var manufacturer: String?

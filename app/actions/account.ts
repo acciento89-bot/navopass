@@ -1,15 +1,12 @@
 "use server";
 
-import { unlink } from "node:fs/promises";
-import { join } from "node:path";
 import { redirect } from "next/navigation";
+import { deleteAccountForUser, isAccountDeletionConfirmation } from "@/lib/account-deletion";
 import { createSession, destroyOtherSessions, destroySession, findUserByEmail, hashPassword, normalizeEmail, requireUser, verifyPassword } from "@/lib/auth";
 import { getBillingState } from "@/lib/billing";
 import { query } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email-verification";
 import { getStripe } from "@/lib/stripe";
-
-const UPLOAD_ROOT = process.env.UPLOAD_DIR || "/app/uploads";
 
 function text(formData: FormData, key: string, max = 500) {
   return String(formData.get(key) ?? "").trim().slice(0, max);
@@ -87,41 +84,17 @@ export async function changePasswordAction(formData: FormData) {
 export async function deleteAccountAction(formData: FormData) {
   const user = await requireUser();
   const password = text(formData, "password", 500);
-  const confirmation = text(formData, "confirmation", 40).toUpperCase();
-  const row = await findUserByEmail(user.email);
-  if (confirmation !== "LÖSCHEN" && confirmation !== "LOESCHEN" && confirmation !== "DELETE") redirect("/app/settings?deleteError=Bitte%20L%C3%96SCHEN%20oder%20DELETE%20eingeben");
-  if (!row || !(await verifyPassword(password, row.password_hash))) redirect("/app/settings?deleteError=Passwort%20ist%20falsch");
-
-  const ownedShared = await query<{ count: number }>(
-    `SELECT count(*)::int AS count FROM workspaces w
-     WHERE w.owner_id=$1 AND w.kind<>'PERSONAL' AND EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id=w.id AND wm.user_id<>$1)`,
-    [user.id]
-  );
-  if ((ownedShared.rows[0]?.count ?? 0) > 0) redirect("/app/settings?deleteError=Bitte%20zuerst%20deine%20Haushalte%20oder%20Teams%20loeschen%20bzw.%20aufraeumen");
-
-  const billing = await getBillingState(user.id);
-  if (billing.stripe_subscription_id && billing.subscription_status !== "canceled" && billing.subscription_status !== "incomplete_expired") {
-    try {
-      await getStripe().subscriptions.cancel(billing.stripe_subscription_id);
-    } catch (error) {
-      console.error("NavoPass subscription cancellation before account deletion failed", error);
-      redirect("/app/settings?deleteError=Das%20laufende%20Abo%20konnte%20nicht%20beendet%20werden.%20Das%20Konto%20wurde%20nicht%20geloescht.%20Bitte%20versuche%20es%20erneut.");
-    }
+  if (!isAccountDeletionConfirmation(formData.get("confirmation"))) {
+    redirect("/app/settings?deleteError=Bitte%20L%C3%96SCHEN%20oder%20DELETE%20eingeben");
   }
 
-  await query(
-    `UPDATE assets a SET owner_id=w.owner_id
-     FROM workspaces w
-     WHERE a.owner_id=$1 AND a.workspace_id=w.id AND w.owner_id<>$1`,
-    [user.id]
-  );
+  const result = await deleteAccountForUser(user, password);
+  if (!result.ok) {
+    if (result.error === "INVALID_PASSWORD") redirect("/app/settings?deleteError=Passwort%20ist%20falsch");
+    if (result.error === "SHARED_WORKSPACES_EXIST") redirect("/app/settings?deleteError=Bitte%20zuerst%20deine%20Haushalte%20oder%20Teams%20loeschen%20bzw.%20aufraeumen");
+    redirect("/app/settings?deleteError=Das%20laufende%20Abo%20konnte%20nicht%20beendet%20werden.%20Das%20Konto%20wurde%20nicht%20geloescht.%20Bitte%20versuche%20es%20erneut.");
+  }
 
-  const docs = await query<{ id: string; url: string }>(
-    `SELECT d.id,d.url FROM asset_documents d JOIN assets a ON a.id=d.asset_id WHERE a.owner_id=$1`,
-    [user.id]
-  );
-  await query("DELETE FROM users WHERE id=$1", [user.id]);
-  await Promise.all(docs.rows.map(async (doc) => { if (doc.url.startsWith(`/api/files/${doc.id}/`)) await unlink(join(UPLOAD_ROOT, doc.id)).catch(() => undefined); }));
   await destroySession();
   redirect("/");
 }

@@ -1,6 +1,7 @@
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { getCurrentUser, normalizeEmail } from "@/lib/auth";
+import { deleteAccountForUser, isAccountDeletionConfirmation } from "@/lib/account-deletion";
+import { destroySession, getCurrentUser, normalizeEmail } from "@/lib/auth";
 import { getOwnedAsset, listAssets, newPublicId, roleCanEdit, roleCanManage } from "@/lib/assets";
 import { ensureCustomerSchema } from "@/lib/customer-schema";
 import { query, transaction } from "@/lib/db";
@@ -186,6 +187,23 @@ export async function POST(request: Request) {
   if (action === "updateReminder") {
     const reminderDays = integer(body.reminderDays, 30, 1, 180);
     await query("UPDATE users SET reminder_days=$1 WHERE id=$2", [reminderDays,user.id]);
+    return response({ ok: true });
+  }
+
+  if (action === "deleteAccount") {
+    const password = text(body.password, 500);
+    if (!isAccountDeletionConfirmation(body.confirmation)) {
+      return response({ error: "INVALID_CONFIRMATION" }, 422);
+    }
+    if (!password) return response({ error: "INVALID_PASSWORD" }, 401);
+
+    const result = await deleteAccountForUser(user, password);
+    if (!result.ok) {
+      const status = result.error === "INVALID_PASSWORD" ? 401 : result.error === "SHARED_WORKSPACES_EXIST" ? 409 : 502;
+      return response({ error: result.error }, status);
+    }
+
+    await destroySession();
     return response({ ok: true });
   }
 
