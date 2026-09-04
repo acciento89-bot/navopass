@@ -104,6 +104,13 @@ const businessBenefits = [
   "QR-Aufkleber, Servicezugänge und nachvollziehbare Objekt-Historien verwalten",
 ];
 
+const homepageFaq = [
+  { question: "Was ist ein digitaler Objektpass?", answer: "Ein digitaler Objektpass bündelt Stammdaten, Dokumente, Garantien, Fristen und die vollständige Servicehistorie eines Gegenstands.", questionEn: "What is a digital asset pass?", answerEn: "A digital asset pass brings together master data, documents, warranties, deadlines and the complete service history of an item." },
+  { question: "Kann ich NavoPass kostenlos nutzen?", answer: "Ja. Mit Free kannst du ohne Grundgebühr starten. Weitere Pässe, gemeinsame Bereiche und Business-Funktionen stehen in den erweiterten Tarifen bereit.", questionEn: "Can I use NavoPass for free?", answerEn: "Yes. The Free plan has no recurring fee. Additional passes, shared workspaces and business features are available on paid plans." },
+  { question: "Muss man zum Öffnen eines QR-Passes eine App installieren?", answer: "Nein. Freigegebene Objektpässe und Berichte lassen sich über QR-Code oder Link direkt in einem aktuellen Browser öffnen.", questionEn: "Do recipients need an app to open a QR pass?", answerEn: "No. Shared asset passes and reports can be opened directly in a modern browser through a QR code or link." },
+  { question: "Für welche Unternehmen ist NavoPass geeignet?", answer: "NavoPass eignet sich branchenübergreifend für Handwerk, Wartung, Prüfung, technischen Service sowie Geräte-, Fahrzeug- und andere Außendienstprozesse.", questionEn: "Which businesses can use NavoPass?", answerEn: "NavoPass supports trades, maintenance, inspections, technical service, equipment and vehicle service, and other field operations." },
+];
+
 export default async function HomePage() {
   const locale = await getLocale();
   const en = locale === "en";
@@ -113,8 +120,14 @@ export default async function HomePage() {
   const localizedAssetTypes = assetTypes.map((item, index) => ({ ...item, label: ["Heat pump", "Bicycle", "Car", "Tool", "Washing machine", "Air conditioner", "Machine", "Boat"][index] }));
   const localizedPrivateBenefits = en ? ["Keep important documents and warranties safely in one place", "Stay on top of maintenance and warranty deadlines", "Use the QR code for repairs, handovers or resale", "Manage passes together with your family in one household"] : privateBenefits;
   const localizedBusinessBenefits = en ? ["Organise customers, locations, devices, vehicles and systems digitally", "Plan service, inspection and field jobs with appointments and team assignments", "Use weekly scheduling with job durations and conflict prevention", "Document work, materials, readings, test results and customer confirmations", "Export service reports as PDFs and share them securely with customers", "Manage QR stickers, service access and traceable asset histories"] : businessBenefits;
+  const faqItems = homepageFaq.map((item) => ({ question: en ? item.questionEn : item.question, answer: en ? item.answerEn : item.answer }));
+  const structuredData = [
+    { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "NavoPass", applicationCategory: "BusinessApplication", operatingSystem: "Web, iOS", url: "https://navopass.de", description: tr("Digitale Objektpässe mit QR-Code, Dokumenten, Wartungshistorie und Serviceberichten.", "Digital asset passes with QR codes, documents, maintenance history and service reports."), offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" }, publisher: { "@type": "Organization", name: "Kamilunavo", url: "https://kamilunavo.com" } },
+    { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqItems.map((item) => ({ "@type": "Question", name: item.question, acceptedAnswer: { "@type": "Answer", text: item.answer } })) },
+  ];
   return (
     <main className={styles.page}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Brand locale={locale} />
@@ -122,6 +135,7 @@ export default async function HomePage() {
             <a href="#produkt">{tr("Produkt", "Product")}</a>
             <a href="#zielgruppen">{tr("Für wen?", "For whom?")}</a>
             <a href="#firmen-service">Business</a>
+            <Link href="/ratgeber">{tr("Ratgeber", "Guides")}</Link>
             <Link href="/preise">{tr("Preise", "Pricing")}</Link>
             <a href="#start">{tr("Loslegen", "Get started")}</a>
           </nav>
@@ -287,11 +301,21 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="faqSection">
+        <div className={styles.sectionHeading}>
+          <span>{tr("HÄUFIGE FRAGEN", "FREQUENTLY ASKED QUESTIONS")}</span>
+          <h2>{tr("Das Wichtigste zu NavoPass", "The essentials about NavoPass")}</h2>
+        </div>
+        <div className="faqGrid">
+          {faqItems.map((item) => <article className="faqCard" key={item.question}><h3>{item.question}</h3><p>{item.answer}</p></article>)}
+        </div>
+      </section>
+
       <footer className={styles.footer} id="footer">
         <div className={styles.footerInner}>
           <div className={styles.footerBrand}><Brand locale={locale} /><p>{tr("Digitale Objektpässe und Einsatzprozesse.", "Digital asset passes and service workflows.")}</p></div>
           <div><b>{tr("Produkt", "Product")}</b><a href="#so-gehts">{tr("Digitale Pässe", "Digital passes")}</a><a href="#firmen-service">Business</a><Link href="/preise">{tr("Preise", "Pricing")}</Link><Link href="/register">{tr("Kostenlos starten", "Start for free")}</Link></div>
-          <div><b>{tr("Ressourcen", "Resources")}</b><Link href="/kontakt">{tr("Kontakt & Support", "Contact & support")}</Link><a href="#firmen-service">{tr("Einsatzplanung & Berichte", "Scheduling & reports")}</a><a href="#produkt">QR {tr("Pässe", "passes")}</a></div>
+          <div><b>{tr("Ressourcen", "Resources")}</b><Link href="/ratgeber">{tr("Ratgeber", "Guides")}</Link><Link href="/kontakt">{tr("Kontakt & Support", "Contact & support")}</Link><a href="#firmen-service">{tr("Einsatzplanung & Berichte", "Scheduling & reports")}</a><a href="#produkt">QR {tr("Pässe", "passes")}</a></div>
           <div><b>{tr("Unternehmen", "Company")}</b><a href="https://kamilunavo.com">Kamilunavo</a><a href="https://kamilunavo.com/support">Kamilunavo Support</a></div>
           <div><b>{tr("Rechtliches", "Legal")}</b><Link href="/datenschutz">{tr("Datenschutz", "Privacy")}</Link><Link href="/impressum">{tr("Impressum", "Legal notice")}</Link><Link href="/nutzungsbedingungen">{tr("Nutzungsbedingungen", "Terms of use")}</Link><span>© 2026 Kamilunavo</span></div>
         </div>

@@ -20,6 +20,7 @@ export async function PublicShell({ children }: { children: ReactNode }) {
           <nav className={styles.nav} aria-label={tr("Öffentliche Navigation", "Public navigation")}>
             <Link href={homeHref}>{tr("Startseite", "Home")}</Link>
             <Link href="/preise">{tr("Preise", "Pricing")}</Link>
+            <Link href="/ratgeber">{tr("Ratgeber", "Guides")}</Link>
             <Link href="/kontakt">{tr("Kontakt", "Contact")}</Link>
             <Link href="/datenschutz">{tr("Datenschutz", "Privacy")}</Link>
           </nav>
@@ -49,6 +50,7 @@ export async function PublicShell({ children }: { children: ReactNode }) {
           <div><Logo href={homeHref} /><p>{tr("Der digitale Pass für deine Dinge.", "The digital pass for your things.")}</p></div>
           <nav className={styles.footerLinks} aria-label={tr("Rechtliches und Service", "Legal and support")}>
             <Link href="/preise">{tr("Preise", "Pricing")}</Link>
+            <Link href="/ratgeber">{tr("Ratgeber", "Guides")}</Link>
             <Link href="/vertrag-widerrufen">{tr("Vertrag widerrufen", "Withdraw from contract")}</Link>
             <Link href="/vertrag-kuendigen">{tr("Verträge hier kündigen", "Cancel subscription")}</Link>
             <Link href="/kontakt">{tr("Kontakt", "Contact")}</Link>

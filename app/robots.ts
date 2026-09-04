@@ -7,5 +7,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: ["/", "/p/"],
       disallow: ["/app/", "/api/", "/login", "/register", "/invite/", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen"],
     }],
+    sitemap: "https://navopass.de/sitemap.xml",
+    host: "https://navopass.de",
   };
 }

@@ -1,0 +1,28 @@
+.faqSection {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 44px 0 86px;
+}
+
+.faqGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  margin-top: 38px;
+}
+
+.faqCard {
+  padding: 24px 26px;
+  border: 1px solid #dce8ee;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(24, 64, 86, .05);
+}
+
+.faqCard h3 { margin: 0 0 8px; color: #18344f; font-size: 1rem; }
+.faqCard p { margin: 0; color: #697f92; font-size: .84rem; line-height: 1.62; }
+
+@media (max-width: 720px) {
+  .faqSection { width: min(100% - 24px, 1120px); }
+  .faqGrid { grid-template-columns: 1fr; }
+}
