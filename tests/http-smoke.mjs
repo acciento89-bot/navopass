@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync } from "node:crypto";
 import pg from "pg";
 
 const { Client } = pg;
@@ -58,6 +58,8 @@ await client.connect();
 
 const userId = randomUUID();
 const workspaceId = randomUUID();
+const deletionUserId = randomUUID();
+const deletionWorkspaceId = randomUUID();
 const email = `release-smoke-${Date.now()}@example.invalid`;
 const sessionToken = randomBytes(32).toString("base64url");
 const sessionHash = createHash("sha256").update(sessionToken).digest("hex");
@@ -108,7 +110,43 @@ try {
 
   const dashboardAfterPublicPages = await page("/app", { headers: authHeaders });
   assert.equal(dashboardAfterPublicPages.status, 200, "session must still authenticate after visiting legal/public pages");
+
+  const deletionPassword = "delete-smoke-password";
+  const deletionSalt = randomBytes(16).toString("hex");
+  const deletionPasswordHash = `scrypt$${deletionSalt}$${scryptSync(deletionPassword, deletionSalt, 64).toString("hex")}`;
+  const deletionSessionToken = randomBytes(32).toString("base64url");
+  const deletionSessionHash = createHash("sha256").update(deletionSessionToken).digest("hex");
+  await client.query(
+    "INSERT INTO users (id,email,name,password_hash,email_verified_at) VALUES ($1,$2,$3,$4,now())",
+    [deletionUserId, `delete-smoke-${Date.now()}@example.invalid`, "Delete Smoke", deletionPasswordHash]
+  );
+  await client.query(
+    "INSERT INTO workspaces (id,name,kind,owner_id) VALUES ($1,$2,'PERSONAL',$3)",
+    [deletionWorkspaceId, "Persönlich", deletionUserId]
+  );
+  await client.query(
+    "INSERT INTO workspace_members (workspace_id,user_id,role) VALUES ($1,$2,'OWNER')",
+    [deletionWorkspaceId, deletionUserId]
+  );
+  await client.query(
+    "INSERT INTO sessions (user_id,token_hash,expires_at) VALUES ($1,$2,now() + interval '1 hour')",
+    [deletionUserId, deletionSessionHash]
+  );
+
+  const deletionResponse = await page("/api/mobile/actions", {
+    method: "POST",
+    headers: {
+      cookie: `navopass_session=${deletionSessionToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ action: "deleteAccount", password: deletionPassword, confirmation: "DELETE" }),
+  });
+  assert.equal(deletionResponse.status, 200, "native account deletion should succeed");
+  assert.deepEqual(await deletionResponse.json(), { ok: true });
+  const deletedUser = await client.query("SELECT id FROM users WHERE id=$1", [deletionUserId]);
+  assert.equal(deletedUser.rowCount, 0, "native account deletion must remove the user record");
 } finally {
+  await client.query("DELETE FROM users WHERE id=$1", [deletionUserId]).catch(() => undefined);
   await client.query("DELETE FROM users WHERE id=$1", [userId]).catch(() => undefined);
   await client.end();
 }
