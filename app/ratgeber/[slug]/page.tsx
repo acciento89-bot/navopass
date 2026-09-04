@@ -14,11 +14,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const guide = getSeoGuide(slug);
   if (!guide) return { title: "Ratgeber nicht gefunden", robots: { index: false, follow: false } };
+  const locale = await getLocale();
+  const seoTitles: Record<string, { de: string; en: string }> = {
+    "digitaler-objektpass": { de: "Digitaler Objektpass", en: "Digital asset pass" },
+    "inventar-mit-qr-code": { de: "Inventar mit QR-Code", en: "QR code inventory" },
+    "wartungsplan-digital": { de: "Digitaler Wartungsplan", en: "Digital maintenance plan" },
+    "servicebericht-digital-erstellen": { de: "Servicebericht digital erstellen", en: "Create digital service reports" },
+  };
   return {
-    title: guide.eyebrow.de.replace("DIGITALER ", "").replace("QR-CODE-", "QR-Code "),
-    description: guide.description.de,
+    title: seoTitles[guide.slug][locale],
+    description: guide.description[locale],
     alternates: { canonical: `/ratgeber/${guide.slug}` },
-    openGraph: { type: "article", url: `https://navopass.de/ratgeber/${guide.slug}`, title: guide.title.de, description: guide.description.de },
+    openGraph: { type: "article", url: `https://navopass.de/ratgeber/${guide.slug}`, title: guide.title[locale], description: guide.description[locale] },
   };
 }
 

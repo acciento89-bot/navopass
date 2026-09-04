@@ -34,7 +34,6 @@ export async function generateMetadata(): Promise<Metadata> {
       shortcut: [{ url: "/navopass.svg", type: "image/svg+xml" }],
       apple: [{ url: "/navopass.svg", type: "image/svg+xml" }],
     },
-    alternates: { canonical: "/" },
     openGraph: {
       type: "website",
       locale: de ? "de_DE" : "en_GB",

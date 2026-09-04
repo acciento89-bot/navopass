@@ -1,8 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { getLocale, type Locale } from "@/lib/i18n";
 import styles from "./home.module.css";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 function Icon({ children, size = 22 }: { children: ReactNode; size?: number }) {
   return (
