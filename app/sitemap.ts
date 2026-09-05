@@ -15,6 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://navopass.de/kontakt", changeFrequency: "yearly", priority: 0.4 },
     { url: "https://navopass.de/impressum", changeFrequency: "yearly", priority: 0.2 },
     { url: "https://navopass.de/datenschutz", changeFrequency: "yearly", priority: 0.2 },
+    { url: "https://navopass.de/konto-loeschen", changeFrequency: "yearly", priority: 0.3 },
     { url: "https://navopass.de/nutzungsbedingungen", changeFrequency: "yearly", priority: 0.2 },
   ];
 
