@@ -53,7 +53,7 @@ jobs:
           grep -Fq 'GmsBarcodeScanning.getClient' android/app/src/main/java/de/kamilunavo/navopass/MainActivity.kt
           grep -Fq '/api/mobile/assets' android/app/src/main/java/de/kamilunavo/navopass/ApiClient.kt
           grep -Fq 'deleteAccount' android/app/src/main/java/de/kamilunavo/navopass/ApiClient.kt
-          if grep -RFn --include='*.kt' -e 'AndroidView' -e 'WebView(' android/app/src/main/java; then
+          if grep -RFn --include='*.kt' -e 'AndroidView(' -e 'WebView(' android/app/src/main/java; then
             echo 'WebView wrapper found: NavoPass Android must remain fully native.' >&2
             exit 1
           fi
