@@ -388,8 +388,6 @@ private fun MoreScreen(state: NavoState, onRoute: (AppRoute) -> Unit) {
         } }
         item { NavoCard(Modifier.fillMaxWidth(), androidx.compose.foundation.layout.PaddingValues(8.dp)) {
             MenuRow(Icons.Default.AccountCircle, tr("Profil & Konto", "Profile & account"), state.user?.email.orEmpty()) { onRoute(AppRoute.Account) }
-            HorizontalDivider(Modifier.padding(start = 58.dp))
-            MenuRow(Icons.Default.OpenInBrowser, tr("Tarife & Preise", "Plans & pricing"), tr("NavoPass-Tarife verwalten", "Manage NavoPass plans")) { openUrl(context, "https://navopass.de/preise") }
         } }
     }
 }
