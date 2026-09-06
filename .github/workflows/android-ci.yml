@@ -45,8 +45,8 @@ jobs:
           test -f android/app/build/outputs/bundle/release/app-release.aab
           grep -Fq 'applicationId = "de.kamilunavo.navopass"' android/app/build.gradle.kts
           grep -Fq 'targetSdk = 36' android/app/build.gradle.kts
-          grep -Fq 'versionCode = 6' android/app/build.gradle.kts
-          grep -Fq 'versionName = "1.0.1"' android/app/build.gradle.kts
+          grep -Fq 'versionCode = 7' android/app/build.gradle.kts
+          grep -Fq 'versionName = "1.0.2"' android/app/build.gradle.kts
           grep -Fq 'android:usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'class MainActivity : ComponentActivity()' android/app/src/main/java/de/kamilunavo/navopass/MainActivity.kt
@@ -60,7 +60,7 @@ jobs:
       - name: Upload unsigned release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: NavoPass-1.0.1-6-unsigned-release-aab
+          name: NavoPass-1.0.2-7-unsigned-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7
