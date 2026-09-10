@@ -353,8 +353,13 @@ private fun AlertsScreen(state: NavoState) {
 private fun ScannerScreen(onPublicId: (String) -> Unit) {
     val context = LocalContext.current
     var error by remember { mutableStateOf<String?>(null) }
-    val options = remember { GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).enableAutoZoom().build() }
-    val scanner = remember { GmsBarcodeScanning.getClient(context, options) }
+    val options = remember {
+        GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .enableAutoZoom()
+            .build()
+    }
+
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         PageHeader(tr("Vor Ort", "On site"), tr("QR-Code scannen", "Scan QR code"), tr("Öffne einen NavoPass direkt am Objekt.", "Open a NavoPass directly at the asset."), Modifier.fillMaxWidth())
         Spacer(Modifier.weight(1f))
@@ -365,11 +370,33 @@ private fun ScannerScreen(onPublicId: (String) -> Unit) {
         error?.let { ErrorCard(it, Modifier.padding(bottom = 12.dp)) }
         Button(onClick = {
             error = null
-            scanner.startScan().addOnSuccessListener { barcode ->
-                val id = barcode.rawValue?.let(::extractPublicId)
-                if (id != null) onPublicId(id) else error = tr("Dieser QR-Code gehört nicht zu NavoPass.", "This is not a NavoPass QR code.")
-            }.addOnFailureListener { error = tr("Der Scanner konnte nicht gestartet werden.", "The scanner could not be started.") }
-        }, Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(17.dp)) { Icon(Icons.Default.QrCode2, null); Spacer(Modifier.width(9.dp)); Text(tr("Scan starten", "Start scan"), fontWeight = FontWeight.Bold) }
+            runCatching { GmsBarcodeScanning.getClient(context, options) }
+                .onSuccess { scanner ->
+                    runCatching { scanner.startScan() }
+                        .onSuccess { task ->
+                            task.addOnSuccessListener { barcode ->
+                                val id = barcode.rawValue?.let(::extractPublicId)
+                                if (id != null) {
+                                    onPublicId(id)
+                                } else {
+                                    error = tr("Dieser QR-Code gehört nicht zu NavoPass.", "This is not a NavoPass QR code.")
+                                }
+                            }.addOnFailureListener {
+                                error = tr("Der Scanner konnte nicht gestartet werden. Prüfe Google Play-Dienste und versuche es erneut.", "The scanner could not be started. Check Google Play services and try again.")
+                            }
+                        }
+                        .onFailure {
+                            error = tr("Der Scanner ist auf diesem Gerät nicht verfügbar.", "The scanner is not available on this device.")
+                        }
+                }
+                .onFailure {
+                    error = tr("Der Scanner ist auf diesem Gerät nicht verfügbar.", "The scanner is not available on this device.")
+                }
+        }, Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(17.dp)) {
+            Icon(Icons.Default.QrCode2, null)
+            Spacer(Modifier.width(9.dp))
+            Text(tr("Scan starten", "Start scan"), fontWeight = FontWeight.Bold)
+        }
         Spacer(Modifier.weight(1f))
     }
 }
