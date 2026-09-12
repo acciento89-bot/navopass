@@ -6,14 +6,20 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/upload-icon-safe-aab.yml'
+      - '.github/signing/navopass-original.kms.json'
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: google-play-navopass
+  cancel-in-progress: false
+
 env:
   PACKAGE_NAME: de.kamilunavo.navopass
   EXPECTED_VERSION_CODE: '9'
+  EXPECTED_CERT_SHA256: 0F474B9F33C9B975AD470B73530FEC5B7E2B4F0CCB4ED024CC5EC6B1051BB56E
   WIF_PROVIDER: projects/1058001477767/locations/global/workloadIdentityPools/github/providers/github-actions
   GOOGLE_SERVICE_ACCOUNT: navoops@emerald-caster-508318-f2.iam.gserviceaccount.com
 
@@ -23,62 +29,127 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
+        with: {persist-credentials: false}
       - uses: actions/setup-java@v5
         with: {distribution: temurin, java-version: '17'}
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
-        with: {gradle-version: '9.5.0'}
-      - name: Restore upload identity from KMS vault
-        uses: acciento89-bot/maengelfix/.github/actions/restore-android-signing@main
-        with:
-          app-id: navopass
-      - name: Build and verify signed release bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' >/dev/null
-          gradle -p android bundleRelease --stacktrace
-          AAB='android/app/build/outputs/bundle/release/app-release.aab'; test -s "$AAB"
-          if ! jarsigner -verify "$AAB" 2>/dev/null | grep -Fq 'jar verified.'; then jarsigner -keystore "$ANDROID_UPLOAD_KEYSTORE_PATH" -storepass "$ANDROID_UPLOAD_KEYSTORE_PASSWORD" -keypass "$ANDROID_UPLOAD_KEY_PASSWORD" "$AAB" "$ANDROID_UPLOAD_KEY_ALIAS"; fi
-          jarsigner -verify "$AAB" | grep -Fq 'jar verified.'
-          grep -Fq 'versionCode = 9' android/app/build.gradle.kts
-          echo "AAB_PATH=$AAB" >> "$GITHUB_ENV"
       - id: google-auth
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.GOOGLE_SERVICE_ACCOUNT }}
           token_format: access_token
-          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
-      - name: Check whether version already exists
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/androidpublisher
+      - uses: google-github-actions/setup-gcloud@v3
+        with: {project_id: emerald-caster-508318-f2}
+      - name: Restore verified original NavoPass upload identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          root="$RUNNER_TEMP/navopass-original-signing"
+          mkdir -p "$root"
+          envelope='.github/signing/navopass-original.kms.json'
+          echo '26ddd1f6ba95e1b0868d8337ff96ae7a67b38ec1c1a600bfe80c85e485d9823e  .github/signing/navopass-original.kms.json' | sha256sum -c -
+          jq -e --arg package "$PACKAGE_NAME" '.schema == 1 and .package == $package' "$envelope" >/dev/null
+          jq -r '.ciphertext_base64' "$envelope" | base64 --decode > "$root/vault.enc"
+          jq -r '.wrapped_passphrase_base64' "$envelope" | base64 --decode > "$root/pass.kms"
+          test "$(sha256sum "$root/vault.enc" | cut -d' ' -f1)" = '783b7b619ab1e8cf22e6e8aaf1b987b40f1146ae4fcc9aabc90cf911a74c8614'
+          test "$(sha256sum "$root/pass.kms" | cut -d' ' -f1)" = 'cce32122f567fac2000855c656525acdf0f0370c8d05b0d7f2db9e2cc7e94228'
+          gcloud kms asymmetric-decrypt --project emerald-caster-508318-f2 --location global --keyring kamilunavo-signing --key android-upload-key-wrap --version 1 --ciphertext-file "$root/pass.kms" --plaintext-file "$root/pass.txt" >/dev/null
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$root/vault.enc" -out "$root/vault.tar.gz" -pass file:"$root/pass.txt"
+          python3 - <<'PY'
+          import json, os, pathlib, tarfile
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'navopass-original-signing'
+          with tarfile.open(root / 'vault.tar.gz', 'r:gz') as archive:
+              members = archive.getmembers()
+              assert len(members) == 2 and {m.name for m in members} == {'upload.jks', 'manifest.json'}
+              for member in members:
+                  assert member.isfile() and member.size < 65536
+                  (root / member.name).write_bytes(archive.extractfile(member).read())
+          entry = json.loads((root / 'manifest.json').read_text())
+          assert entry['package'] == os.environ['PACKAGE_NAME']
+          assert entry['certificate_sha256'].replace(':', '') == os.environ['EXPECTED_CERT_SHA256']
+          assert entry['keystore'] == 'upload.jks'
+          fields = {'ANDROID_UPLOAD_KEYSTORE_PASSWORD': entry['store_password'],
+                    'ANDROID_UPLOAD_STORE_PASSWORD': entry['store_password'],
+                    'ANDROID_UPLOAD_KEY_ALIAS': entry['alias'],
+                    'ANDROID_UPLOAD_KEY_PASSWORD': entry['key_password']}
+          for value in fields.values():
+              assert value and '\n' not in value and '\r' not in value
+              print('::add-mask::' + value.replace('%', '%25'))
+          fields['ANDROID_UPLOAD_KEYSTORE_PATH'] = str(root / 'upload.jks')
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              for name, value in fields.items():
+                  output.write(f'{name}={value}\n')
+          for name in ['manifest.json', 'pass.txt', 'vault.tar.gz', 'vault.enc', 'pass.kms']:
+              (root / name).unlink()
+          PY
+      - name: Reject any unexpected signing certificate before building
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -J-Duser.language=en -list -v -keystore "$ANDROID_UPLOAD_KEYSTORE_PATH" -storepass:env ANDROID_UPLOAD_KEYSTORE_PASSWORD -alias "$ANDROID_UPLOAD_KEY_ALIAS" > "$RUNNER_TEMP/navopass-certificate.txt"
+          actual=$(sed -n 's/^[[:space:]]*SHA256: //p' "$RUNNER_TEMP/navopass-certificate.txt" | tr -d ':\r\n ')
+          test "$actual" = "$EXPECTED_CERT_SHA256"
+          echo "Verified original upload certificate SHA-256: $actual"
+      - uses: android-actions/setup-android@v3
+        with: {log-accepted-android-sdk-licenses: false, packages: platform-tools}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '9.5.0'}
+      - name: Build and verify signed release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' >/dev/null
+          gradle -p android bundleRelease --stacktrace
+          AAB='android/app/build/outputs/bundle/release/app-release.aab'
+          test -s "$AAB"
+          if ! jarsigner -verify "$AAB" > "$RUNNER_TEMP/navopass-jar-verification.txt" 2>&1 || ! grep -Fq 'jar verified.' "$RUNNER_TEMP/navopass-jar-verification.txt"; then
+            jarsigner -keystore "$ANDROID_UPLOAD_KEYSTORE_PATH" -storepass:env ANDROID_UPLOAD_KEYSTORE_PASSWORD -keypass:env ANDROID_UPLOAD_KEY_PASSWORD "$AAB" "$ANDROID_UPLOAD_KEY_ALIAS"
+          fi
+          jarsigner -verify "$AAB" > "$RUNNER_TEMP/navopass-jar-verification.txt"
+          grep -Fq 'jar verified.' "$RUNNER_TEMP/navopass-jar-verification.txt"
+          keytool -J-Duser.language=en -printcert -jarfile "$AAB" > "$RUNNER_TEMP/navopass-bundle-certificate.txt"
+          actual=$(sed -n 's/^[[:space:]]*SHA256: //p' "$RUNNER_TEMP/navopass-bundle-certificate.txt" | tr -d ':\r\n ')
+          test "$actual" = "$EXPECTED_CERT_SHA256"
+          grep -Fq 'versionCode = 9' android/app/build.gradle.kts
+          echo "AAB_PATH=$AAB" >> "$GITHUB_ENV"
+      - name: Upload and read back the exact Play bundle
         env: {TOKEN: '${{ steps.google-auth.outputs.access_token }}'}
         shell: bash
         run: |
           set -euo pipefail
           api='https://androidpublisher.googleapis.com/androidpublisher/v3'
-          edit=$(curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits" | jq -r '.id')
-          bundles=$(curl -fsS -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$edit/bundles")
-          if jq -e --argjson code "$EXPECTED_VERSION_CODE" '.bundles | any(.versionCode == $code)' <<<"$bundles" >/dev/null; then echo 'ALREADY_PRESENT=true' >> "$GITHUB_ENV"; else echo 'ALREADY_PRESENT=false' >> "$GITHUB_ENV"; fi
-          curl -fsS -X DELETE -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$edit" >/dev/null
-      - name: Upload and verify Play bundle
-        if: env.ALREADY_PRESENT != 'true'
-        env: {TOKEN: '${{ steps.google-auth.outputs.access_token }}'}
-        shell: bash
-        run: |
-          set -euo pipefail
-          api='https://androidpublisher.googleapis.com/androidpublisher/v3'; upload='https://androidpublisher.googleapis.com/upload/androidpublisher/v3'
-          edit=$(curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits" | jq -r '.id')
-          body=$(mktemp); status=$(curl -sS -o "$body" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/octet-stream' --data-binary "@$AAB_PATH" "$upload/applications/$PACKAGE_NAME/edits/$edit/bundles?uploadType=media")
-          if [[ "$status" != 200 ]]; then cat "$body" >&2; curl -sS -X DELETE -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$edit" >/dev/null || true; exit 1; fi
+          upload='https://androidpublisher.googleapis.com/upload/androidpublisher/v3'
+          edit=''; body=$(mktemp)
+          cleanup() { if [ -n "$edit" ]; then curl -sS --max-time 30 -X DELETE -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$edit" >/dev/null || true; fi; rm -f "$body"; }
+          trap cleanup EXIT
+          edit=$(curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits" | jq -er '.id')
+          curl -fsS --max-time 60 -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$edit/bundles" > "$body"
+          if jq -e --argjson code "$EXPECTED_VERSION_CODE" '[.bundles[]? | select(.versionCode == $code)] | length == 1' "$body" >/dev/null; then
+            echo "Version $EXPECTED_VERSION_CODE already present; no duplicate upload." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          status=$(curl -sS --max-time 600 -o "$body" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/octet-stream' --data-binary "@$AAB_PATH" "$upload/applications/$PACKAGE_NAME/edits/$edit/bundles?uploadType=media")
+          if [[ "$status" != 200 ]]; then cat "$body" >&2; exit 1; fi
           test "$(jq -r '.versionCode' "$body")" = "$EXPECTED_VERSION_CODE"
-          status=$(curl -sS -o "$body" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits/$edit:commit")
+          local_sha=$(sha256sum "$AAB_PATH" | cut -d' ' -f1)
+          remote_sha=$(jq -er '.sha256' "$body" | tr '[:upper:]' '[:lower:]')
+          test "$remote_sha" = "$local_sha"
+          status=$(curl -sS --max-time 120 -o "$body" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits/$edit:commit")
+          if [[ "$status" != 2* ]] && grep -Fq 'changesNotSentForReview' "$body"; then
+            status=$(curl -sS --max-time 120 -o "$body" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits/$edit:commit?changesNotSentForReview=true")
+            echo 'Play requires a separate review submission; upload does not change a release track.' >> "$GITHUB_STEP_SUMMARY"
+          fi
           [[ "$status" == 2* ]] || { cat "$body" >&2; exit 1; }
-          fresh=$(curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits" | jq -r '.id')
-          curl -fsS -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$fresh/bundles" | jq -e --argjson code "$EXPECTED_VERSION_CODE" '.bundles | any(.versionCode == $code)' >/dev/null
-          curl -fsS -X DELETE -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$fresh" >/dev/null
+          edit=''
+          edit=$(curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' "$api/applications/$PACKAGE_NAME/edits" | jq -er '.id')
+          curl -fsS --max-time 60 -H "Authorization: Bearer $TOKEN" "$api/applications/$PACKAGE_NAME/edits/$edit/bundles" > "$body"
+          jq -e --argjson code "$EXPECTED_VERSION_CODE" --arg sha "$local_sha" '[.bundles[]? | select(.versionCode == $code and (.sha256 | ascii_downcase) == $sha)] | length == 1' "$body" >/dev/null
+          echo "NavoPass version $EXPECTED_VERSION_CODE uploaded and independently verified, SHA-256 $local_sha. Release tracks unchanged." | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Destroy restored signing material
         if: always()
         shell: bash
         run: |
-          rm -f "$RUNNER_TEMP/kamilunavo-upload.jks"
-          rm -rf "$RUNNER_TEMP/kamilunavo-signing-vault"
+          rm -rf "$RUNNER_TEMP/navopass-original-signing"
+          rm -f "$RUNNER_TEMP"/navopass-*-certificate.txt "$RUNNER_TEMP/navopass-certificate.txt" "$RUNNER_TEMP/navopass-jar-verification.txt"
