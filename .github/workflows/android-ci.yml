@@ -3,13 +3,16 @@ name: NavoPass Android CI
 on:
   push:
     branches:
+      - main
       - 'android/**'
     paths:
       - 'android/**'
+      - 'public/navopass.svg'
       - '.github/workflows/android-ci.yml'
   pull_request:
     paths:
       - 'android/**'
+      - 'public/navopass.svg'
       - '.github/workflows/android-ci.yml'
   workflow_dispatch:
 
@@ -32,6 +35,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.0'
+      - name: Verify canonical app, launcher, splash and Play icon identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp -s public/navopass.svg android/store/google-play/icon.svg
+          grep -Fq '#0A6D99' android/app/src/main/res/values/colors.xml
+          grep -Fq '#0B4D70' android/app/src/main/res/values/colors.xml
+          grep -Fq 'M256,103 L141,151' android/app/src/main/res/drawable/navopass_launcher_foreground.xml
+          grep -Fq 'M204,254 L240,290 L312,212' android/app/src/main/res/drawable/navopass_launcher_foreground.xml
+          grep -Fq '@mipmap/ic_launcher' android/app/src/main/res/values-v31/themes.xml
+          grep -Fq 'android:icon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -Fq 'android:roundIcon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
       - name: Unit tests
         run: gradle -p android testDebugUnitTest --stacktrace
       - name: Build debug AAB
@@ -45,8 +60,8 @@ jobs:
           test -f android/app/build/outputs/bundle/release/app-release.aab
           grep -Fq 'applicationId = "de.kamilunavo.navopass"' android/app/build.gradle.kts
           grep -Fq 'targetSdk = 36' android/app/build.gradle.kts
-          grep -Fq 'versionCode = 8' android/app/build.gradle.kts
-          grep -Fq 'versionName = "1.0.3"' android/app/build.gradle.kts
+          grep -Fq 'versionCode = 9' android/app/build.gradle.kts
+          grep -Fq 'versionName = "1.0.4"' android/app/build.gradle.kts
           grep -Fq 'android:usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android:name="com.google.mlkit.vision.DEPENDENCIES"' android/app/src/main/AndroidManifest.xml
@@ -62,7 +77,7 @@ jobs:
       - name: Upload unsigned release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: NavoPass-1.0.3-8-unsigned-release-aab
+          name: NavoPass-1.0.4-9-unsigned-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7
