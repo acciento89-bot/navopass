@@ -7,11 +7,13 @@ on:
       - 'android/**'
     paths:
       - 'android/**'
+      - 'ios/NavoPass/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
       - 'public/navopass.svg'
       - '.github/workflows/android-ci.yml'
   pull_request:
     paths:
       - 'android/**'
+      - 'ios/NavoPass/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
       - 'public/navopass.svg'
       - '.github/workflows/android-ci.yml'
   workflow_dispatch:
@@ -35,18 +37,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.0'
-      - name: Verify canonical app, launcher, splash and Play icon identity
+      - name: Verify exact iOS, Android launcher and splash icon identity
         shell: bash
         run: |
           set -euo pipefail
-          cmp -s public/navopass.svg android/store/google-play/icon.svg
-          grep -Fq '#0A6D99' android/app/src/main/res/values/colors.xml
-          grep -Fq '#0B4D70' android/app/src/main/res/values/colors.xml
-          grep -Fq 'M256,103 L141,151' android/app/src/main/res/drawable/navopass_launcher_foreground.xml
-          grep -Fq 'M204,254 L240,290 L312,212' android/app/src/main/res/drawable/navopass_launcher_foreground.xml
-          grep -Fq '@mipmap/ic_launcher' android/app/src/main/res/values-v31/themes.xml
-          grep -Fq 'android:icon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
-          grep -Fq 'android:roundIcon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
+          ios_icon='ios/NavoPass/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
+          android_icon='android/app/src/main/res/drawable-nodpi/navopass_icon.png'
+          test -s "$ios_icon"
+          test -s "$android_icon"
+          cmp -s "$ios_icon" "$android_icon"
+          grep -Fq 'android:icon="@drawable/navopass_icon"' android/app/src/main/AndroidManifest.xml
+          ! grep -Fq 'android:roundIcon=' android/app/src/main/AndroidManifest.xml
+          grep -Fq '@drawable/navopass_icon' android/app/src/main/res/values-v31/themes.xml
+          test ! -e android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          test ! -e android/app/src/main/res/drawable/ic_launcher.xml
+          test ! -e android/app/src/main/res/drawable/navopass_launcher_background.xml
+          test ! -e android/app/src/main/res/drawable/navopass_launcher_foreground.xml
+          sha256sum "$ios_icon" "$android_icon"
       - name: Unit tests
         run: gradle -p android testDebugUnitTest --stacktrace
       - name: Build debug AAB
