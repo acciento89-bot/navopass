@@ -262,6 +262,7 @@ struct MoreView: View {
                     PageHeader(eyebrow: "NavoPass", title: "More", subtitle: "All native tools for your assets, service work and account.")
                         .padding(.bottom, 3)
                     NativeMenuLink(title: "Service jobs", subtitle: "Plan and complete work orders", icon: "briefcase.fill", destination: ServiceJobsView())
+                    NativeMenuLink(title: "Offline service drafts", subtitle: "Private notes and explicit publication receipts", icon: "tray.full.fill", destination: ServiceDraftQueueView(store: api.serviceDrafts))
                     NativeMenuLink(title: "Customers & locations", subtitle: "Assign assets and manage contacts", icon: "building.2.fill", destination: CustomersView())
                     NativeMenuLink(title: "Workspaces", subtitle: "Personal and shared areas", icon: "person.3.fill", destination: WorkspacesView())
                     NativeMenuLink(title: "QR labels", subtitle: "Show and share printable pass codes", icon: "qrcode", destination: QRLabelsView())

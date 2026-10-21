@@ -7,6 +7,7 @@ import { SERVICE_ACCESS_SCHEMA_STATEMENTS } from "@/lib/service-access-schema";
 import { SERVICE_REPORT_SCHEMA_STATEMENTS } from "@/lib/service-report-schema";
 import { SERVICE_WORKFLOW_SCHEMA_STATEMENTS } from "@/lib/service-workflow-schema";
 import { STICKER_ORDER_SCHEMA_STATEMENTS } from "@/lib/sticker-order-schema";
+import { SERVICE_DRAFT_SCHEMA_STATEMENTS } from "@/lib/service-draft-schema";
 
 types.setTypeParser(1082, (value) => value);
 
@@ -19,6 +20,7 @@ const ALL_SCHEMA_STATEMENTS = [
   ...CUSTOMER_SCHEMA_STATEMENTS,
   ...SERVICE_REPORT_SCHEMA_STATEMENTS,
   ...SERVICE_WORKFLOW_SCHEMA_STATEMENTS,
+  ...SERVICE_DRAFT_SCHEMA_STATEMENTS,
 ] as const;
 
 const globalForDb = globalThis as unknown as {

@@ -40,6 +40,14 @@ final class APIClient: ObservableObject {
     private let session: URLSession
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
+    lazy var serviceDrafts: ServiceDraftCoordinator = {
+        let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("NavoPass", isDirectory: true)
+        return ServiceDraftCoordinator(baseURL: folder, transport: { [weak self] command in
+            guard let self else { throw ServiceDraftPublishError.unauthenticated }
+            return try await self.publishServiceDraft(command)
+        })
+    }()
+    private lazy var draftSession = ServiceDraftSessionAdapter(coordinator: serviceDrafts)
 
     init() {
         let configuration = URLSessionConfiguration.default
@@ -50,16 +58,21 @@ final class APIClient: ObservableObject {
     }
 
     func restoreSession() async {
+        let epoch = serviceDrafts.generation
         do {
             try await refreshUser()
             await refreshAssets()
         } catch {
+            guard serviceDrafts.generation == epoch else { return }
             user = nil
+            draftSession.sessionUnavailable()
         }
     }
 
     func refreshUser() async throws {
+        let attempt = draftSession.beginVerification()
         let envelope: UserEnvelope = try await request("/api/mobile/session")
+        guard observeVerifiedDraftOwner(envelope.user.id, attempt: attempt) else { return }
         user = envelope.user
     }
 
@@ -67,8 +80,10 @@ final class APIClient: ObservableObject {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        let attempt = draftSession.beginVerification()
         do {
             let envelope: UserEnvelope = try await request("/api/mobile/session", method: "POST", body: Credentials(email: email, password: password))
+            guard observeVerifiedDraftOwner(envelope.user.id, attempt: attempt) else { return }
             user = envelope.user
             await refreshAssets()
         } catch {
@@ -77,6 +92,7 @@ final class APIClient: ObservableObject {
     }
 
     func signOut() async {
+        draftSession.willLogout()
         do { try await requestWithoutBody("/api/mobile/session", method: "DELETE") } catch { }
         user = nil
         assets = []
@@ -93,7 +109,12 @@ final class APIClient: ObservableObject {
     }
 
     func assetDetails(id: String) async throws -> AssetDetailsEnvelope {
-        try await request("/api/mobile/assets/\(id)")
+        let token = user.flatMap { draftSession.beginAuthorizedOperation(userId: $0.id) }
+        let details: AssetDetailsEnvelope = try await request("/api/mobile/assets/\(id)")
+        if let token, details.permissions?.canEdit == true, details.asset.archivedAt == nil {
+            try? draftSession.loadedPass(token: token, passId: details.asset.id, label: details.asset.name, canEdit: true)
+        }
+        return details
     }
 
     func publicAssetDetails(publicId: String) async throws -> AssetDetailsEnvelope {
@@ -242,10 +263,12 @@ final class APIClient: ObservableObject {
     }
 
     func deleteAccount(password: String, confirmation: String) async throws {
+        let draftToken = user.flatMap { draftSession.beginAccountDeletion(userId: $0.id) }
         var action = MobileAction(action: "deleteAccount")
         action.password = password
         action.confirmation = confirmation
         try await performAction(action)
+        draftSession.accountDeletionFinished(token: draftToken, success: true)
         user = nil
         assets = []
         errorMessage = nil
@@ -327,6 +350,34 @@ final class APIClient: ObservableObject {
         try await performAction(action)
     }
 
+    func verifyDraftSession() async {
+        let attempt = draftSession.beginVerification(userId: user?.id)
+        do {
+            let envelope: UserEnvelope = try await request("/api/mobile/session")
+            _ = observeVerifiedDraftOwner(envelope.user.id, attempt: attempt)
+        } catch {
+            guard serviceDrafts.generation == attempt.generation else { return }
+            draftSession.sessionUnavailable(); errorMessage = error.localizedDescription
+        }
+    }
+    private func observeVerifiedDraftOwner(_ owner: String, attempt: ServiceDraftVerificationAttempt) -> Bool {
+        do { return try draftSession.verifiedSession(userId: owner, attempt: attempt) }
+        catch {
+            errorMessage = String(localized: "Offline drafts are locked. Previous private files were preserved.")
+            return true // Server identity remains valid even if its separate private journal is locked.
+        }
+    }
+    private func publishServiceDraft(_ command: FrozenServiceDraft) async throws -> ServiceDraftReceipt {
+        do { return try await perform("/api/mobile/service-drafts", method: "POST", body: command.wireData) }
+        catch APIError.server(let code) {
+            switch code {
+            case "UNAUTHENTICATED", "HTTP_401": throw ServiceDraftPublishError.unauthenticated
+            case "FORBIDDEN", "HTTP_403": throw ServiceDraftPublishError.forbidden
+            case "DRAFT_KEY_CONTENT_CONFLICT", "DELIVERED_EVENT_REMOVED": throw ServiceDraftPublishError.conflict
+            default: throw ServiceDraftPublishError.unknown
+            }
+        }
+    }
     private func performAction(_ action: MobileAction) async throws {
         let _: ActionEnvelope = try await request("/api/mobile/actions", method: "POST", body: action)
     }
@@ -384,7 +435,9 @@ struct AssetDetailsEnvelope: Decodable {
     let events: [AssetEvent]
     let documents: [AssetDocument]
     let serviceAccess: ServiceAccessEnvelope?
+    let permissions: AssetDraftPermissions?
 }
+struct AssetDraftPermissions: Decodable { let canEdit: Bool; let canManage: Bool }
 
 private struct MobileAction: Encodable {
     let action: String

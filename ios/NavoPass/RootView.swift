@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var api: APIClient
+    @Environment(\.scenePhase) private var scenePhase
     @State private var restoring = true
 
     var body: some View {
@@ -21,6 +22,13 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .privacySensitive()
+        .overlay {
+            if scenePhase != .active, api.user != nil {
+                Color(uiColor: .systemBackground).overlay { Label("Private content hidden", systemImage: "lock.fill") }
+                    .ignoresSafeArea()
+            }
+        }
         .task {
             await api.restoreSession()
             restoring = false

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountView: View {
     @EnvironmentObject private var api: APIClient
+    @State private var confirmingDraftLogout = false
     var body: some View {
         ZStack {
             NavoBackground()
@@ -22,9 +23,16 @@ struct AccountView: View {
                         Divider().padding(.leading, 58)
                         Link(destination: URL(string: "https://navopass.de/nutzungsbedingungen")!) { linkRow("Terms of use", icon: "doc.text.fill") }
                     }.navoCard(padding: 10)
-                    Button(role: .destructive) { Task { await api.signOut() } } label: {
+                    Button(role: .destructive) {
+                        if api.serviceDrafts.drafts.isEmpty { Task { await api.signOut() } }
+                        else { confirmingDraftLogout = true }
+                    } label: {
                         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
                     }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: 17))
+                        .confirmationDialog("Sign out and delete local drafts?", isPresented: $confirmingDraftLogout, titleVisibility: .visible) {
+                            Button("Delete local drafts and sign out", role: .destructive) { Task { await api.signOut() } }
+                            Button("Cancel", role: .cancel) {}
+                        }
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Danger zone", systemImage: "exclamationmark.triangle.fill")
                             .font(.headline)

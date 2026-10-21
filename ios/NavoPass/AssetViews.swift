@@ -138,6 +138,7 @@ struct AssetDetailView: View {
                 }.padding(.vertical, 8)
             }
             Section("Actions") {
+                NavigationLink { ServiceDraftQueueView(store: api.serviceDrafts, passId: current.id) } label: { Label("Offline service drafts", systemImage: "tray.full.fill") }
                 Button { showingEdit = true } label: { Label("Edit pass", systemImage: "pencil") }
                 Button { showingQR = true } label: { Label("Show QR code", systemImage: "qrcode") }
                 ShareLink(item: URL(string: "https://navopass.de/p/\(current.publicId)")!) { Label("Share pass", systemImage: "square.and.arrow.up") }

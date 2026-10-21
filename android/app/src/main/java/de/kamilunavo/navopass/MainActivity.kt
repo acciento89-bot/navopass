@@ -75,6 +75,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -134,18 +139,32 @@ private fun NavoPassApp(initialPublicId: String?) {
     val state by model.state.collectAsState()
     var route by remember { mutableStateOf<AppRoute>(AppRoute.Main) }
     var publicId by remember { mutableStateOf(initialPublicId) }
+    var showDrafts by rememberSaveable(state.user?.id) { mutableStateOf(false) }
+    var draftPass by rememberSaveable(state.user?.id) { mutableStateOf<String?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var obscured by remember { mutableStateOf(false) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) obscured = true
+            if (event == Lifecycle.Event.ON_RESUME) obscured = false
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     NavoBackground {
         when {
             state.restoring -> LoadingScreen(tr("NavoPass wird geladen …", "Loading NavoPass…"))
             state.user == null -> LoginScreen(state, model)
+            showDrafts -> ServiceDraftScreen(model, draftPass) { showDrafts = false }
             publicId != null -> PublicPassScreen(publicId!!, model.api) { publicId = null }
-            route == AppRoute.Main -> MainTabs(state, model, onRoute = { route = it }, onPublicId = { publicId = it })
-            route is AppRoute.AssetDetail -> AssetDetailScreen((route as AppRoute.AssetDetail).id, model, onBack = { route = AppRoute.Main })
+            route == AppRoute.Main -> MainTabs(state, model, onRoute = { route = it }, onPublicId = { publicId = it }, onDrafts = { draftPass = null; showDrafts = true })
+            route is AppRoute.AssetDetail -> AssetDetailScreen((route as AppRoute.AssetDetail).id, model, onBack = { route = AppRoute.Main }, onDrafts = { draftPass = (route as AppRoute.AssetDetail).id; showDrafts = true })
             route == AppRoute.NewAsset -> NewAssetScreen(model, onBack = { route = AppRoute.Main })
             route == AppRoute.Account -> AccountScreen(state, model, onBack = { route = AppRoute.Main }, onDelete = { route = AppRoute.DeleteAccount })
             route == AppRoute.DeleteAccount -> DeleteAccountScreen(state, model, onBack = { route = AppRoute.Account })
         }
+        if (obscured && state.user != null) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
     }
 }
 
@@ -206,7 +225,7 @@ private fun LoginScreen(state: NavoState, model: NavoViewModel) {
 }
 
 @Composable
-private fun MainTabs(state: NavoState, model: NavoViewModel, onRoute: (AppRoute) -> Unit, onPublicId: (String) -> Unit) {
+private fun MainTabs(state: NavoState, model: NavoViewModel, onRoute: (AppRoute) -> Unit, onPublicId: (String) -> Unit, onDrafts: () -> Unit) {
     var tab by remember { mutableStateOf(MainTab.Passes) }
     Scaffold(
         containerColor = Color.Transparent,
@@ -230,7 +249,7 @@ private fun MainTabs(state: NavoState, model: NavoViewModel, onRoute: (AppRoute)
                 MainTab.Service -> ServiceScreen(state)
                 MainTab.Scan -> ScannerScreen(onPublicId)
                 MainTab.Alerts -> AlertsScreen(state)
-                MainTab.More -> MoreScreen(state, onRoute)
+                MainTab.More -> MoreScreen(state, onRoute, onDrafts)
             }
         }
     }
@@ -402,10 +421,11 @@ private fun ScannerScreen(onPublicId: (String) -> Unit) {
 }
 
 @Composable
-private fun MoreScreen(state: NavoState, onRoute: (AppRoute) -> Unit) {
+private fun MoreScreen(state: NavoState, onRoute: (AppRoute) -> Unit, onDrafts: () -> Unit) {
     val context = LocalContext.current
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp, 18.dp, 20.dp, 36.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item { PageHeader("NavoPass", tr("Mehr", "More"), tr("Alle nativen Werkzeuge für Objekte, Service und Konto.", "All native tools for your assets, service work and account.")) }
+        item { NavoCard(Modifier.fillMaxWidth()) { MenuRow(Icons.Default.Edit, tr("Offline-Serviceentwürfe", "Offline service drafts"), tr("Lokal speichern, später ausdrücklich veröffentlichen", "Save locally, publish explicitly later"), onDrafts) } }
         item { NavoCard(Modifier.fillMaxWidth(), androidx.compose.foundation.layout.PaddingValues(8.dp)) {
             MenuRow(Icons.Default.Build, tr("Serviceeinsätze", "Service jobs"), tr("Einsätze planen und abschließen", "Plan and complete work orders")) { openUrl(context, "https://navopass.de/app/auftraege") }
             HorizontalDivider(Modifier.padding(start = 58.dp))
@@ -420,12 +440,12 @@ private fun MoreScreen(state: NavoState, onRoute: (AppRoute) -> Unit) {
 }
 
 @Composable
-private fun AssetDetailScreen(id: String, model: NavoViewModel, onBack: () -> Unit) {
+private fun AssetDetailScreen(id: String, model: NavoViewModel, onBack: () -> Unit, onDrafts: () -> Unit) {
     var details by remember { mutableStateOf<AssetDetails?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    LaunchedEffect(id) { try { details = withContext(Dispatchers.IO) { model.api.asset(id) } } catch (e: Exception) { error = e.message } }
+    LaunchedEffect(id) { try { details = model.loadAssetForDrafts(id) } catch (e: Exception) { error = e.message } }
     ScreenWithTopBar(tr("Passdetails", "Pass details"), onBack) { padding ->
         when {
             details == null && error == null -> LoadingScreen(tr("Pass wird geladen …", "Loading pass…"))
@@ -444,6 +464,7 @@ private fun AssetDetailScreen(id: String, model: NavoViewModel, onBack: () -> Un
                         FilledTonalButton(onClick = { model.assetAction("toggleFavorite", id) { details = details?.copy(asset = details!!.asset.copy(favorite = !details!!.asset.favorite)) } }, Modifier.weight(1f)) { Icon(if (value.asset.favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null); Spacer(Modifier.width(6.dp)); Text(tr("Favorit", "Favourite")) }
                         FilledTonalButton(onClick = { context.startActivity(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "https://navopass.de/p/${value.asset.publicId}") }) }, Modifier.weight(1f)) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text(tr("Teilen", "Share")) }
                     } }
+                    item { OutlinedButton(onClick = onDrafts, modifier = Modifier.fillMaxWidth()) { Text(tr("Offline-Serviceentwürfe", "Offline service drafts")) } }
                     item { SectionTitle(tr("Historie", "History"), value.events.size) }
                     if (value.events.isEmpty()) item { EmptyCard(Icons.Default.Description, tr("Noch keine Einträge", "No entries yet"), tr("Service- und Reparatureinträge erscheinen hier.", "Service and repair entries appear here.")) }
                     items(value.events, key = { it.id }) { event -> NavoCard(Modifier.fillMaxWidth()) { Text(event.title, fontWeight = FontWeight.Bold); Text("${event.eventDate} · ${event.eventType}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp); event.description?.let { Text(it, modifier = Modifier.padding(top = 8.dp)) } } }
@@ -488,6 +509,8 @@ private fun NewAssetScreen(model: NavoViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun AccountScreen(state: NavoState, model: NavoViewModel, onBack: () -> Unit, onDelete: () -> Unit) {
+    var confirmDraftLogout by remember { mutableStateOf(false) }
+    val draftChanges by model.draftChanges.collectAsState()
     val context = LocalContext.current
     ScreenWithTopBar(tr("Konto", "Account"), onBack) { padding ->
         Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(20.dp)) {
@@ -498,10 +521,11 @@ private fun AccountScreen(state: NavoState, model: NavoViewModel, onBack: () -> 
                 HorizontalDivider(Modifier.padding(start = 58.dp))
                 MenuRow(Icons.Default.Description, tr("Nutzungsbedingungen", "Terms of use"), "navopass.de/nutzungsbedingungen") { openUrl(context, "https://navopass.de/nutzungsbedingungen") }
             }
-            OutlinedButton(onClick = { model.signOut() }, Modifier.fillMaxWidth().height(68.dp).padding(top = 14.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(tr("Abmelden", "Sign out"), fontWeight = FontWeight.Bold) }
+            OutlinedButton(onClick = { if (model.serviceDrafts.drafts.isNotEmpty()) confirmDraftLogout = true else model.signOut() }, Modifier.fillMaxWidth().height(68.dp).padding(top = 14.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(tr("Abmelden", "Sign out"), fontWeight = FontWeight.Bold) }
             NavoCard(Modifier.fillMaxWidth().padding(top = 14.dp)) { Text(tr("Gefahrenzone", "Danger zone"), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold); Text(tr("Lösche dein NavoPass-Konto und alle zugehörigen Daten dauerhaft.", "Permanently delete your NavoPass account and associated data."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)); OutlinedButton(onDelete, Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(7.dp)); Text(tr("Konto löschen", "Delete account")) } }
         }
     }
+    if (confirmDraftLogout) AlertDialog(onDismissRequest = { confirmDraftLogout = false }, title = { Text(tr("Lokale Entwürfe löschen und abmelden?", "Delete local drafts and sign out?")) }, text = { Text(tr("Die lokalen Entwürfe und Belege dieses Kontos werden von diesem Gerät entfernt.", "This account’s local drafts and receipts will be removed from this device.")) }, confirmButton = { TextButton(onClick = { confirmDraftLogout = false; model.signOut() }) { Text(tr("Löschen und abmelden", "Delete and sign out")) } }, dismissButton = { TextButton(onClick = { confirmDraftLogout = false }) { Text(tr("Abbrechen", "Cancel")) } })
 }
 
 @Composable
