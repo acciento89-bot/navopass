@@ -65,6 +65,7 @@ jobs:
             exit 1
           fi
           npm run test:smoke
+          node tests/service-draft-http.mjs
 
   ios:
     runs-on: macos-15

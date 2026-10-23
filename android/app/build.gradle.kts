@@ -11,8 +11,8 @@ android {
         applicationId = "de.kamilunavo.navopass"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.0.4"
+        versionCode = 11
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_URL", "\"https://navopass.de\"")
     }
