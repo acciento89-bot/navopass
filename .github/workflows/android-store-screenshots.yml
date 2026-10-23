@@ -43,9 +43,9 @@ jobs:
         run: sudo chmod 666 /dev/kvm
 
       - name: Verify bounded emulator recovery and app-ANR rejection
-      run: bash tests/android-foreground.test.sh
+        run: bash tests/android-foreground.test.sh
 
-    - name: Build local debug APK
+      - name: Build local debug APK
         run: gradle -p android --no-daemon assembleDebug --stacktrace
 
       - name: Capture exact current NavoPass UI
@@ -59,15 +59,15 @@ jobs:
           script: PACKAGE_NAME='de.kamilunavo.navopass' WAIT_TEXT='NavoPass' SECOND_ACTION='dark' SECOND_TEXT='' OUTPUT_DIR='store/google-play/screenshots/de-DE' bash "$GITHUB_WORKSPACE/.github/scripts/capture-android-store-screenshots.sh"
 
       - name: Preserve native failure diagnostics
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: NavoPass-Android-Runtime-Diagnostics
-        path: store/google-play/screenshots/de-DE/diagnostics/
-        if-no-files-found: ignore
-        retention-days: 14
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NavoPass-Android-Runtime-Diagnostics
+          path: store/google-play/screenshots/de-DE/diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
 
-    - name: Upload authentic screenshots
+      - name: Upload authentic screenshots
         uses: actions/upload-artifact@v4
         with:
           name: NavoPass-Play-Store-Screenshots-de-DE
