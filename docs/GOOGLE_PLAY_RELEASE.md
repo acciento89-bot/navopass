@@ -4,8 +4,8 @@
 
 - App: NavoPass
 - Package: `de.kamilunavo.navopass`
-- Version: `1.0.1`
-- versionCode: `6`
+- Version: `1.1.0`
+- versionCode: `11`
 - Target SDK: Android 16 / API 36
 - Distribution: Android App Bundle (`.aab`)
 

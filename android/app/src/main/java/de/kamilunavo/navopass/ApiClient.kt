@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-class NavoApiException(message: String) : Exception(message)
+class NavoApiException(message: String, val code: String? = null) : Exception(message)
 
 class ApiClient(context: Context) {
     private val preferences = context.getSharedPreferences("navopass_session", Context.MODE_PRIVATE)
@@ -37,7 +37,8 @@ class ApiClient(context: Context) {
         return AssetDetails(
             payload.objectValue("asset").asset(),
             payload.array("events").map { it.event() },
-            payload.array("documents").map { it.document() }
+            payload.array("documents").map { it.document() },
+            payload.optJSONObject("permissions")?.optBoolean("canEdit", false) ?: false
         )
     }
 
@@ -83,7 +84,12 @@ class ApiClient(context: Context) {
         cookie = null
     }
 
-    private suspend fun request(path: String, method: String = "GET", body: JSONObject? = null): JSONObject = withContext(Dispatchers.IO) {
+    suspend fun publishDraft(command: FrozenServiceDraft): ServiceDraftReceipt {
+        val payload = request("/api/mobile/service-drafts", "POST", rawBody = command.wireText)
+        return ServiceDraftReceipt(payload.getString("eventId"), payload.getInt("revision"), payload.getString("digest"))
+    }
+
+    private suspend fun request(path: String, method: String = "GET", body: JSONObject? = null, rawBody: String? = null): JSONObject = withContext(Dispatchers.IO) {
         val connection = (URL(BuildConfig.API_URL + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 15_000
@@ -91,10 +97,10 @@ class ApiClient(context: Context) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Accept-Language", if (Locale.getDefault().language == "de") "de" else "en")
             cookie?.let { setRequestProperty("Cookie", it) }
-            if (body != null) {
+            if (body != null || rawBody != null) {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
-                outputStream.use { it.write(body.toString().toByteArray()) }
+                outputStream.use { it.write((rawBody ?: body.toString()).toByteArray(Charsets.UTF_8)) }
             }
         }
         try {
@@ -103,7 +109,7 @@ class ApiClient(context: Context) {
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             val json = if (text.isBlank()) JSONObject() else JSONObject(text)
-            if (code !in 200..299) throw NavoApiException(localizedError(json.optString("error", "HTTP_$code")))
+            if (code !in 200..299) throw NavoApiException(localizedError(json.optString("error", "HTTP_$code")), json.optString("error", "HTTP_$code"))
             json
         } finally {
             connection.disconnect()

@@ -50,7 +50,8 @@ data class AssetDocument(
 data class AssetDetails(
     val asset: Asset,
     val events: List<AssetEvent>,
-    val documents: List<AssetDocument>
+    val documents: List<AssetDocument>,
+    val canEdit: Boolean = false
 )
 
 data class WorkspaceInvite(

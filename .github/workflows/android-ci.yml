@@ -32,6 +32,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - name: Install Android 16 SDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
@@ -67,8 +69,8 @@ jobs:
           test -f android/app/build/outputs/bundle/release/app-release.aab
           grep -Fq 'applicationId = "de.kamilunavo.navopass"' android/app/build.gradle.kts
           grep -Fq 'targetSdk = 36' android/app/build.gradle.kts
-          grep -Fq 'versionCode = 9' android/app/build.gradle.kts
-          grep -Fq 'versionName = "1.0.4"' android/app/build.gradle.kts
+          grep -Fq 'versionCode = 11' android/app/build.gradle.kts
+          grep -Fq 'versionName = "1.1.0"' android/app/build.gradle.kts
           grep -Fq 'android:usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android:name="com.google.mlkit.vision.DEPENDENCIES"' android/app/src/main/AndroidManifest.xml
@@ -84,7 +86,7 @@ jobs:
       - name: Upload unsigned release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: NavoPass-1.0.4-9-unsigned-release-aab
+          name: NavoPass-1.1.0-11-unsigned-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7

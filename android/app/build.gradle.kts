@@ -11,8 +11,8 @@ android {
         applicationId = "de.kamilunavo.navopass"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.0.4"
+        versionCode = 11
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_URL", "\"https://navopass.de\"")
     }
@@ -50,6 +50,7 @@ dependencies {
     implementation("com.google.zxing:core:3.5.4")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
