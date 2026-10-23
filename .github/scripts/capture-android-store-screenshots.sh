@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 : "${PACKAGE_NAME:?PACKAGE_NAME is required}"
 : "${WAIT_TEXT:?WAIT_TEXT is required}"
@@ -10,9 +10,7 @@ readonly apk_path="$GITHUB_WORKSPACE/android/app/build/outputs/apk/debug/app-deb
 readonly output_dir="$GITHUB_WORKSPACE/$OUTPUT_DIR"
 readonly ui_dump_path="${RUNNER_TEMP:-/tmp}/current-window.xml"
 
-current_focus() {
-  adb shell dumpsys window | grep "mCurrentFocus=" || true
-}
+source "$(dirname "${BASH_SOURCE[0]}")/android-foreground.sh"
 
 dump_ui() {
   local attempt
@@ -40,20 +38,6 @@ assert_no_system_dialog() {
   fi
 }
 
-wait_for_foreground() {
-  local attempt
-  local focus
-  for attempt in $(seq 1 30); do
-    focus="$(current_focus)"
-    if [[ "$focus" == *"$PACKAGE_NAME"* ]]; then
-      return 0
-    fi
-    sleep 1
-  done
-  echo "Timed out waiting for $PACKAGE_NAME to become the foreground app." >&2
-  current_focus >&2
-  return 1
-}
 
 wait_for_text() {
   local attempt
@@ -114,10 +98,20 @@ PY
   adb shell input tap "$x" "$y"
 }
 
+collect_failure_diagnostics() {
+  local result=$?
+  set +e
+  mkdir -p "$output_dir/diagnostics"
+  adb logcat -b all -d -v threadtime > "$output_dir/diagnostics/logcat.txt" 2>&1
+  adb shell dumpsys window > "$output_dir/diagnostics/window.txt" 2>&1
+  adb shell dumpsys activity top > "$output_dir/diagnostics/activity.txt" 2>&1
+  exit "$result"
+}
+trap collect_failure_diagnostics ERR
+
 mkdir -p "$output_dir"
 rm -f "$output_dir"/*.png
 adb install -r "$apk_path"
-adb shell settings put global hide_error_dialogs 1
 adb shell cmd locale set-app-locales "$PACKAGE_NAME" --user 0 de-DE
 launch_app
 assert_clean_foreground
